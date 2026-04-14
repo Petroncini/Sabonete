@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ateliê Camila Petroncini — Fechamento</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#C8977A',
+            secondary: '#A8866B',
+            heading: '#5C3D2E',
+            accent: '#8B9E84',
+            cream: '#FAF5EF',
+          },
+          fontFamily: {
+            head: ['"Playfair Display"', 'Georgia', 'serif'],
+            script: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+            body: ['Lato', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { background-color: var(--bg); }
+    .checkout-container { background: #fff; border-radius: 14px; box-shadow: var(--shadow); padding: 3rem; }
+    .radio-card { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; cursor: pointer; transition: all 0.2s; }
+    .radio-card:hover { border-color: var(--primary); }
+    input[type=radio]:checked + .radio-card { border-color: var(--primary); background-color: var(--cream); }
+  </style>
+</head>
+
+<body>
+  <header>
+    <nav id="navbar" class="hero-mode" role="navigation" aria-label="Menu principal">
+      <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <a href="index.html" class="nav-logo" aria-label="Início">
+          <img src="imagens/marca.jpeg" alt="Ateliê Camila Petroncini" />
+        </a>
+        <div class="flex items-center gap-4">
+          <button id="hamburger" class="md:hidden p-1" aria-label="Abrir menu" aria-expanded="false" style="color:var(--heading)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="mobile-menu" role="menu" aria-label="Menu mobile">
+        <a href="index.html" class="nav-link" role="menuitem">Início</a>
+      </div>
+    </nav>
+  </header>
+
+  <main style="padding-top: 120px; padding-bottom: 80px; min-height: 80vh;">
+    <div class="max-w-3xl mx-auto px-4">
+      <div class="reveal">
+        <h1 class="section-title text-center">Finalizar Pedido</h1>
+        <p class="section-subtitle text-center">Informe seu endereço e forma de pagamento</p>
+        <div class="floral-divider"><span>📦</span></div>
+      </div>
+      
+      <div class="checkout-container mt-12 reveal reveal-delay-1">
+        <form onsubmit="event.preventDefault(); alert('Compra efetuada com sucesso (Mock)! Redirecionando...'); window.location.href='index.html';">
+          
+          <!-- Endereço -->
+          <h2 class="font-head text-2xl mb-4" style="color:var(--heading);">1. Entrega</h2>
+          <div class="grid grid-cols-3 gap-4 mb-8">
+            <div class="form-group col-span-3 sm:col-span-1">
+              <label for="cep" class="form-label">CEP</label>
+              <input type="text" id="cep" class="form-input" placeholder="00000-000" required />
+            </div>
+            <div class="form-group col-span-3 sm:col-span-2">
+              <label for="endereco" class="form-label">Endereço Completo</label>
+              <input type="text" id="endereco" class="form-input" placeholder="Sua rua, número, complemento" required />
+            </div>
+          </div>
+
+          <!-- Pagamento -->
+          <h2 class="font-head text-2xl mb-4" style="color:var(--heading);">2. Pagamento</h2>
+          <div class="grid sm:grid-cols-2 gap-4 mb-8">
+            <label class="cursor-pointer block relative">
+              <input type="radio" name="pagamento" value="pix" class="peer hidden" required />
+              <div class="radio-card peer-checked:border-primary peer-checked:bg-[var(--cream)]">
+                <span class="font-bold block mb-1" style="color:var(--heading)">PIX (Desconto de 5%)</span>
+                <span class="text-sm text-gray-500">Aprovação imediata. QR Code gerado ao finalizar.</span>
+              </div>
+            </label>
+            <label class="cursor-pointer block relative">
+              <input type="radio" name="pagamento" value="cartao" class="peer hidden" required />
+              <div class="radio-card peer-checked:border-primary peer-checked:bg-[var(--cream)]">
+                <span class="font-bold block mb-1" style="color:var(--heading)">Cartão de Crédito</span>
+                <span class="text-sm text-gray-500">Até 3x sem juros no cartão.</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Resumo e Botão -->
+          <div class="bg-gray-50 p-6 rounded-lg mb-8 border border-gray-100 flex justify-between items-center">
+             <div>
+                <p class="text-sm text-gray-500">Total da compra com frete</p>
+                <p class="text-2xl font-bold font-head" style="color:var(--primary)">R$ 74,80</p>
+             </div>
+             <button type="submit" class="btn-primary" style="padding-left: 2.5rem; padding-right: 2.5rem; font-size: 1.1rem;">Concluir Pedido »</button>
+          </div>
+          
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="max-w-6xl mx-auto text-center" style="padding-bottom: 20px;">
+      <p class="footer-copy">© 2024 Ateliê Camila Petroncini. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+  <script src="main.js"></script>
+</body>
+</html>

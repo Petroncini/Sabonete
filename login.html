@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ateliê Camila Petroncini — Login e Cadastro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#C8977A',
+            secondary: '#A8866B',
+            heading: '#5C3D2E',
+            accent: '#8B9E84',
+            cream: '#FAF5EF',
+          },
+          fontFamily: {
+            head: ['"Playfair Display"', 'Georgia', 'serif'],
+            script: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+            body: ['Lato', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { background-color: var(--bg); }
+    .auth-container { background: #fff; border-radius: 14px; box-shadow: var(--shadow); padding: 3rem; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <nav id="navbar" class="hero-mode" role="navigation" aria-label="Menu principal">
+      <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <a href="index.html" class="nav-logo" aria-label="Início">
+          <img src="imagens/marca.jpeg" alt="Ateliê Camila Petroncini" />
+        </a>
+        <ul class="hidden md:flex items-center gap-8 list-none m-0 p-0">
+          <li><a href="index.html#sobre" class="nav-link">Sobre</a></li>
+          <li><a href="index.html#produtos" class="nav-link">Produtos</a></li>
+          <li><a href="index.html#contato" class="nav-link">Contato</a></li>
+          <li><a href="login.html" class="nav-link active"><b>Entrar</b></a></li>
+          <li><a href="backoffice.html" class="nav-link text-xs uppercase tracking-widest text-secondary font-bold">Admin</a></li>
+        </ul>
+        <div class="flex items-center gap-4">
+          <a href="carrinho.html" id="cart-icon-link" aria-label="Ver carrinho" class="relative p-1 transition-transform hover:scale-110 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" style="color:var(--heading)">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span id="cart-badge" aria-live="polite">0</span>
+          </a>
+          <button id="hamburger" class="md:hidden p-1" aria-label="Abrir menu" aria-expanded="false" style="color:var(--heading)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="mobile-menu" role="menu" aria-label="Menu mobile">
+        <a href="index.html#produtos" class="nav-link" role="menuitem">Produtos</a>
+        <a href="login.html" class="nav-link" role="menuitem">Entrar</a>
+        <a href="backoffice.html" class="nav-link" role="menuitem">Admin</a>
+      </div>
+    </nav>
+  </header>
+
+  <main style="padding-top: 120px; padding-bottom: 80px; min-height: 80vh;">
+    <div class="max-w-4xl mx-auto px-4">
+      <div class="reveal">
+        <h1 class="section-title text-center">Área do Cliente</h1>
+        <p class="section-subtitle text-center">Acesse ou crie sua conta para gerenciar pedidos</p>
+        <div class="floral-divider"><span>🌸</span></div>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-8 mt-12">
+        <!-- Login -->
+        <div class="auth-container reveal reveal-delay-1">
+          <h2 class="font-head text-2xl mb-6 text-center" style="color:var(--heading);">Já sou cliente</h2>
+          <form onsubmit="event.preventDefault(); alert('Login mockado!');" novalidate>
+            <div class="form-group mb-4">
+              <label for="login-email" class="form-label">E-mail</label>
+              <input type="email" id="login-email" class="form-input" placeholder="seu@email.com" required />
+            </div>
+            <div class="form-group mb-6">
+              <label for="login-pass" class="form-label">Senha</label>
+              <input type="password" id="login-pass" class="form-input" placeholder="••••••••" required />
+            </div>
+            <button type="submit" class="btn-primary w-full justify-center">Entrar</button>
+            <p class="text-sm mt-4 text-center cursor-pointer" style="color:var(--secondary)">Esqueci minha senha</p>
+          </form>
+        </div>
+        
+        <!-- Cadastro -->
+        <div class="auth-container reveal reveal-delay-2" style="background-color:var(--cream)">
+          <h2 class="font-head text-2xl mb-6 text-center" style="color:var(--heading);">Criar uma conta</h2>
+          <form onsubmit="event.preventDefault(); alert('Cadastro mockado!');" novalidate>
+            <div class="form-group mb-4">
+              <label for="reg-name" class="form-label">Nome Completo</label>
+              <input type="text" id="reg-name" class="form-input" placeholder="Seu nome" required />
+            </div>
+            <div class="form-group mb-4">
+              <label for="reg-email" class="form-label">E-mail</label>
+              <input type="email" id="reg-email" class="form-input" placeholder="seu@email.com" required />
+            </div>
+            <div class="form-group mb-6">
+              <label for="reg-pass" class="form-label">Crie uma Senha</label>
+              <input type="password" id="reg-pass" class="form-input" placeholder="••••••••" required />
+            </div>
+            <button type="submit" class="btn-outline w-full justify-center">Cadastrar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="max-w-6xl mx-auto text-center" style="padding-bottom: 20px;">
+      <p class="footer-copy">© 2024 Ateliê Camila Petroncini. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+  <script src="main.js"></script>
+</body>
+</html>

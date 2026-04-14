@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ateliê Camila Petroncini — Carrinho</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#C8977A',
+            secondary: '#A8866B',
+            heading: '#5C3D2E',
+            accent: '#8B9E84',
+            cream: '#FAF5EF',
+          },
+          fontFamily: {
+            head: ['"Playfair Display"', 'Georgia', 'serif'],
+            script: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+            body: ['Lato', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { background-color: var(--bg); }
+    .cart-container { background: #fff; border-radius: 14px; box-shadow: var(--shadow); padding: 2rem; }
+    .cart-item { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 1.5rem 0; }
+    .cart-item:last-child { border-bottom: none; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <nav id="navbar" class="hero-mode" role="navigation" aria-label="Menu principal">
+      <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <a href="index.html" class="nav-logo" aria-label="Início">
+          <img src="imagens/marca.jpeg" alt="Ateliê Camila Petroncini" />
+        </a>
+        <ul class="hidden md:flex items-center gap-8 list-none m-0 p-0">
+          <li><a href="index.html#sobre" class="nav-link">Sobre</a></li>
+          <li><a href="index.html#produtos" class="nav-link">Produtos</a></li>
+          <li><a href="login.html" class="nav-link">Entrar</a></li>
+        </ul>
+        <div class="flex items-center gap-4">
+          <button id="hamburger" class="md:hidden p-1" aria-label="Abrir menu" aria-expanded="false" style="color:var(--heading)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="mobile-menu" role="menu" aria-label="Menu mobile">
+        <a href="index.html" class="nav-link" role="menuitem">Início</a>
+      </div>
+    </nav>
+  </header>
+
+  <main style="padding-top: 120px; padding-bottom: 80px; min-height: 80vh;">
+    <div class="max-w-4xl mx-auto px-4">
+      <div class="reveal">
+        <h1 class="section-title text-center">Seu Carrinho</h1>
+        <p class="section-subtitle text-center">Confira os itens antes de finalizar a compra</p>
+        <div class="floral-divider"><span>🛒</span></div>
+      </div>
+      
+      <div class="cart-container mt-12 reveal reveal-delay-1">
+        
+        <!-- Mock Item 1 -->
+        <div class="cart-item">
+          <div class="flex items-center gap-4">
+            <img src="imagens/produtos/lavanda.png" alt="Lavanda" class="w-16 h-16 object-cover rounded-md border" style="border-color:var(--border)" />
+            <div>
+              <h3 class="font-head text-lg" style="color:var(--heading)">Sabonete de Lavanda</h3>
+              <p class="text-sm" style="color:var(--secondary)">Quantidade: 2</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-lg" style="color:var(--heading)">R$ 37,80</p>
+            <button class="text-xs text-red-500 hover:underline">Remover</button>
+          </div>
+        </div>
+
+        <!-- Mock Item 2 -->
+        <div class="cart-item">
+          <div class="flex items-center gap-4">
+            <img src="imagens/produtos/argila.png" alt="Argila" class="w-16 h-16 object-cover rounded-md border" style="border-color:var(--border)" />
+            <div>
+              <h3 class="font-head text-lg" style="color:var(--heading)">Sabonete de Argila Rosa</h3>
+              <p class="text-sm" style="color:var(--secondary)">Quantidade: 1</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-lg" style="color:var(--heading)">R$ 22,00</p>
+            <button class="text-xs text-red-500 hover:underline">Remover</button>
+          </div>
+        </div>
+
+        <div class="mt-8 pt-6 border-t" style="border-color:var(--border)">
+          <div class="flex justify-between items-center mb-6">
+            <span class="text-xl font-bold" style="color:var(--heading)">Subtotal:</span>
+            <span class="text-2xl font-bold font-head" style="color:var(--primary)">R$ 59,80</span>
+          </div>
+          <div class="flex justify-end gap-4">
+            <a href="index.html#produtos" class="btn-outline">Continuar Comprando</a>
+            <a href="checkout.html" class="btn-primary">Finalizar Compra</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="max-w-6xl mx-auto text-center" style="padding-bottom: 20px;">
+      <p class="footer-copy">© 2024 Ateliê Camila Petroncini. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+  <script src="main.js"></script>
+</body>
+</html>
