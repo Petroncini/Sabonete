@@ -333,20 +333,6 @@ function updateCartBadge() {
     }
 }
 
-function initCartUI() {
-    const cartIcon = document.getElementById('cart-icon');
-    cartIcon?.addEventListener('click', () => {
-        // Abre mini-painel do carrinho (simplificado como alert/toast)
-        if (state.cart.length === 0) {
-            showToast('Seu carrinho está vazio 🛒');
-            return;
-        }
-        const items = state.cart.map(i => `• ${i.name} (${i.qty}x) — R$ ${(i.price * i.qty).toFixed(2).replace('.', ',')}`).join('\n');
-        const total = state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-        alert(`🛒 Seu Carrinho:\n\n${items}\n\nTotal: R$ ${total.toFixed(2).replace('.', ',')}\n\nEm breve: finalizar pedido via WhatsApp 💬`);
-    });
-}
-
 // ============================================================
 // MODAL DE PRODUTO (AJAX simulado)
 // ============================================================
@@ -550,21 +536,4 @@ function showFeedback(type, message) {
 
 function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-// ============================================================
-// TOAST SIMPLES
-// ============================================================
-function showToast(message) {
-    const toast = document.createElement('div');
-    toast.textContent = message;
-    toast.style.cssText = `
-    position:fixed;bottom:6rem;left:50%;transform:translateX(-50%);
-    background:var(--heading);color:#fff;padding:.75rem 1.5rem;
-    border-radius:50px;font-size:.875rem;font-weight:600;
-    z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);
-    animation:slideUp .3s ease;white-space:nowrap;
-  `;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
 }
