@@ -169,11 +169,11 @@ h4 {
 }
 
 #navbar.hero-mode .nav-link {
-    color: rgba(255, 255, 255, .9)
+    color: black
 }
 
 #navbar.hero-mode .nav-link:hover {
-    color: #fff
+    color: black
 }
 
 #cart-badge {
