@@ -280,7 +280,7 @@ function createProductCard(p) {
         <div class="product-card-footer">
           <span class="product-price">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
           <button class="btn-cart" data-id="${p.id}" aria-label="Adicionar ${p.name} ao carrinho">
-            🛒 Adicionar
+            Adicionar
           </button>
         </div>
       </div>
