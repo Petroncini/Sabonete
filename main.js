@@ -118,8 +118,10 @@ const PRODUCTS = [
 // ============================================================
 // ESTADO DA APLICAÇÃO
 // ============================================================
+let allProducts = [];
+
 const state = {
-    cart: [],
+    cart: JSON.parse(localStorage.getItem('cart') || '[]'),
     currentFilter: 'todos',
     carouselIndex: 0,
     carouselTotal: 3,
@@ -270,6 +272,8 @@ function fetchProducts(category) {
                 ingredients: 'Ingredientes naturais'
             }));
             
+            allProducts = formattedProducts;
+
             if (category === 'todos') return formattedProducts;
             return formattedProducts.filter(p => p.category === category);
         })
@@ -320,7 +324,7 @@ function initFilterButtons() {
 // CARRINHO
 // ============================================================
 function addToCart(productId, btnEl) {
-    const product = PRODUCTS.find(p => p.id === productId);
+    const product = allProducts.find(p => p.id === productId);
     if (!product) return;
 
     const existing = state.cart.find(item => item.id === productId);
@@ -329,6 +333,8 @@ function addToCart(productId, btnEl) {
     } else {
         state.cart.push({ ...product, qty: 1 });
     }
+
+    localStorage.setItem('cart', JSON.stringify(state.cart));
 
     // Feedback visual no botão
     btnEl.textContent = '✓ Adicionado';
@@ -339,6 +345,19 @@ function addToCart(productId, btnEl) {
     }, 1500);
 
     updateCartBadge();
+}
+
+function initCartUI() {
+    updateCartBadge();
+}
+
+function removeFromCart(productId) {
+    state.cart = state.cart.filter(item => item.id !== productId);
+    localStorage.setItem('cart', JSON.stringify(state.cart));
+    updateCartBadge();
+    if (typeof renderCart === 'function') {
+        renderCart();
+    }
 }
 
 function updateCartBadge() {

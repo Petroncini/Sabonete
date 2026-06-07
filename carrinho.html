@@ -73,40 +73,14 @@
       
       <div class="cart-container mt-12 reveal reveal-delay-1">
         
-        <!-- Mock Item 1 -->
-        <div class="cart-item">
-          <div class="flex items-center gap-4">
-            <img src="imagens/produtos/lavanda.png" alt="Lavanda" class="w-16 h-16 object-cover rounded-md border" style="border-color:var(--border)" />
-            <div>
-              <h3 class="font-head text-lg" style="color:var(--heading)">Sabonete de Lavanda</h3>
-              <p class="text-sm" style="color:var(--secondary)">Quantidade: 2</p>
-            </div>
-          </div>
-          <div class="text-right">
-            <p class="font-bold text-lg" style="color:var(--heading)">R$ 37,80</p>
-            <button class="text-xs text-red-500 hover:underline">Remover</button>
-          </div>
-        </div>
-
-        <!-- Mock Item 2 -->
-        <div class="cart-item">
-          <div class="flex items-center gap-4">
-            <img src="imagens/produtos/argila.png" alt="Argila" class="w-16 h-16 object-cover rounded-md border" style="border-color:var(--border)" />
-            <div>
-              <h3 class="font-head text-lg" style="color:var(--heading)">Sabonete de Argila Rosa</h3>
-              <p class="text-sm" style="color:var(--secondary)">Quantidade: 1</p>
-            </div>
-          </div>
-          <div class="text-right">
-            <p class="font-bold text-lg" style="color:var(--heading)">R$ 22,00</p>
-            <button class="text-xs text-red-500 hover:underline">Remover</button>
-          </div>
+        <div id="cart-items-container">
+            <!-- Items rendered dynamically -->
         </div>
 
         <div class="mt-8 pt-6 border-t" style="border-color:var(--border)">
           <div class="flex justify-between items-center mb-6">
             <span class="text-xl font-bold" style="color:var(--heading)">Subtotal:</span>
-            <span class="text-2xl font-bold font-head" style="color:var(--primary)">R$ 59,80</span>
+            <span id="cart-subtotal" class="text-2xl font-bold font-head" style="color:var(--primary)">R$ 0,00</span>
           </div>
           <div class="flex justify-end gap-4">
             <a href="index.html#produtos" class="btn-outline">Continuar Comprando</a>
@@ -123,5 +97,43 @@
     </div>
   </footer>
   <script src="main.js"></script>
+  <script>
+    window.renderCart = function() {
+        const container = document.getElementById('cart-items-container');
+        const subtotalEl = document.getElementById('cart-subtotal');
+        
+        if (state.cart.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500">Seu carrinho está vazio.</p>';
+            subtotalEl.innerText = 'R$ 0,00';
+            return;
+        }
+
+        let subtotal = 0;
+        container.innerHTML = state.cart.map(item => {
+            const itemTotal = item.price * item.qty;
+            subtotal += itemTotal;
+            return `
+            <div class="cart-item">
+              <div class="flex items-center gap-4">
+                <img src="${item.img || 'imagens/produtos/placeholder.png'}" alt="${item.name}" class="w-16 h-16 object-cover rounded-md border" style="border-color:var(--border)" />
+                <div>
+                  <h3 class="font-head text-lg" style="color:var(--heading)">${item.name}</h3>
+                  <p class="text-sm" style="color:var(--secondary)">Quantidade: ${item.qty}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="font-bold text-lg" style="color:var(--heading)">R$ ${itemTotal.toFixed(2).replace('.', ',')}</p>
+                <button onclick="removeFromCart(${item.id})" class="text-xs text-red-500 hover:underline">Remover</button>
+              </div>
+            </div>`;
+        }).join('');
+
+        subtotalEl.innerText = \`R$ \${subtotal.toFixed(2).replace('.', ',')}\`;
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(renderCart, 100);
+    });
+  </script>
 </body>
 </html>

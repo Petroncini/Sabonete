@@ -23,6 +23,10 @@ app.use('/api/produtos', productsRoutes);
 app.use('/api/pedidos', ordersRoutes);
 app.use('/api/frete', shippingRoutes);
 
+// Servir o Frontend (HTML, CSS, JS)
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../')));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
