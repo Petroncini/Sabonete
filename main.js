@@ -252,14 +252,31 @@ function renderProducts(category) {
 
 // Simula uma Fetch API assíncrona para os dados de produto
 function fetchProducts(category) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const filtered = category === 'todos'
-                ? PRODUCTS
-                : PRODUCTS.filter(p => p.category === category);
-            resolve(filtered);
-        }, 80);
-    });
+    return fetch('http://localhost:3000/api/produtos')
+        .then(res => res.json())
+        .then(data => {
+            // Map keys from DB to frontend expected format
+            const formattedProducts = data.map(p => ({
+                id: p.id,
+                name: p.nome,
+                category: 'todos', // DB currently doesn't have category, defaulting
+                price: parseFloat(p.preco),
+                badge: '',
+                badgeLabel: '',
+                tags: [],
+                desc: p.descricao,
+                img: 'imagens/produtos/placeholder.png', // Fallback image
+                details: `Peso: ${p.peso_gramas}g`,
+                ingredients: 'Ingredientes naturais'
+            }));
+            
+            if (category === 'todos') return formattedProducts;
+            return formattedProducts.filter(p => p.category === category);
+        })
+        .catch(err => {
+            console.error('Error fetching products:', err);
+            return [];
+        });
 }
 
 function createProductCard(p) {
@@ -399,11 +416,29 @@ function closeModal() {
 }
 
 function fetchProductById(id) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(PRODUCTS.find(p => p.id === id) || null);
-        }, 60);
-    });
+    return fetch('http://localhost:3000/api/produtos')
+        .then(res => res.json())
+        .then(data => {
+            const product = data.find(p => p.id === id);
+            if (!product) return null;
+            return {
+                id: product.id,
+                name: product.nome,
+                category: 'todos',
+                price: parseFloat(product.preco),
+                badge: '',
+                badgeLabel: '',
+                tags: [],
+                desc: product.descricao,
+                img: 'imagens/produtos/placeholder.png',
+                details: `Peso: ${product.peso_gramas}g. Dimensões: ${product.comprimento_cm}x${product.largura_cm}x${product.altura_cm}cm`,
+                ingredients: 'Ingredientes naturais e orgânicos'
+            };
+        })
+        .catch(err => {
+            console.error(err);
+            return null;
+        });
 }
 
 // ============================================================
