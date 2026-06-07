@@ -366,6 +366,22 @@ function removeFromCart(productId) {
     }
 }
 
+function updateQty(productId, change) {
+    const existing = state.cart.find(item => item.id === productId);
+    if (existing) {
+        existing.qty += change;
+        if (existing.qty <= 0) {
+            removeFromCart(productId);
+            return;
+        }
+        localStorage.setItem('cart', JSON.stringify(state.cart));
+        updateCartBadge();
+        if (typeof renderCart === 'function') {
+            renderCart();
+        }
+    }
+}
+
 function updateCartBadge() {
     const badge = document.getElementById('cart-badge');
     const total = state.cart.reduce((sum, item) => sum + item.qty, 0);
