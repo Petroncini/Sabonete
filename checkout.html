@@ -66,7 +66,7 @@
       </div>
       
       <div class="checkout-container mt-12 reveal reveal-delay-1">
-        <form onsubmit="event.preventDefault(); alert('Compra efetuada com sucesso (Mock)! Redirecionando...'); window.location.href='index.html';">
+        <form id="form-checkout">
           
           <!-- Endereço -->
           <h2 class="font-head text-2xl mb-4" style="color:var(--heading);">1. Entrega</h2>
@@ -104,12 +104,20 @@
           <div class="bg-gray-50 p-6 rounded-lg mb-8 border border-gray-100 flex justify-between items-center">
              <div>
                 <p class="text-sm text-gray-500">Total da compra com frete</p>
-                <p class="text-2xl font-bold font-head" style="color:var(--primary)">R$ 74,80</p>
+                <p class="text-2xl font-bold font-head" style="color:var(--primary)" id="total-checkout">R$ 0,00</p>
              </div>
              <button type="submit" class="btn-primary" style="padding-left: 2.5rem; padding-right: 2.5rem; font-size: 1.1rem;">Concluir Pedido »</button>
           </div>
           
         </form>
+
+        <!-- Área do PIX (Oculta por padrão) -->
+        <div id="pix-area" class="hidden text-center mt-8 p-6 bg-[var(--cream)] rounded-lg border border-[var(--primary)]">
+          <h2 class="font-head text-2xl mb-2" style="color:var(--heading);">Pedido Criado com Sucesso!</h2>
+          <p class="mb-4">Copie o código abaixo e pague no app do seu banco para confirmar o pedido.</p>
+          <textarea id="pix-code" class="w-full p-4 rounded text-sm font-mono bg-white border border-gray-300" rows="4" readonly></textarea>
+          <button type="button" onclick="copiarPix()" class="btn-primary mt-4">Copiar Código PIX</button>
+        </div>
       </div>
     </div>
   </main>
@@ -120,5 +128,88 @@
     </div>
   </footer>
   <script src="main.js"></script>
+  <script>
+    // Recupera token do usuário
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert("Você precisa fazer login para finalizar a compra.");
+        window.location.href = 'login.html';
+    }
+
+    // Calcula total dinâmico ao carregar a página
+    setTimeout(() => {
+        const cartTotal = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        // Simulando frete fixo de 20.00
+        const frete = 20.00;
+        const total = cartTotal + frete;
+        document.getElementById('total-checkout').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    }, 500);
+
+    document.getElementById('form-checkout').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (state.cart.length === 0) {
+            alert('Seu carrinho está vazio!');
+            return;
+        }
+
+        const endereco = document.getElementById('endereco').value + " - CEP: " + document.getElementById('cep').value;
+        const btn = e.target.querySelector('button[type="submit"]');
+        
+        btn.disabled = true;
+        btn.textContent = 'Processando...';
+
+        try {
+            // Prepara carrinho para a API
+            const payloadCarrinho = state.cart.map(item => ({
+                produto_id: item.id,
+                quantidade: item.qty
+            }));
+
+            const res = await fetch('http://localhost:3000/api/pedidos', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ 
+                    carrinho: payloadCarrinho,
+                    endereco_entrega: endereco,
+                    valor_frete: 20.00 // Fixo por enquanto
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                // Esconde formulário, mostra PIX
+                document.getElementById('form-checkout').style.display = 'none';
+                document.getElementById('pix-area').classList.remove('hidden');
+                document.getElementById('pix-code').value = data.pix_copia_cola;
+                
+                // Limpa carrinho
+                state.cart = [];
+                updateCartBadge();
+            } else {
+                alert("Erro: " + data.error);
+                btn.disabled = false;
+                btn.textContent = 'Concluir Pedido »';
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao conectar com o servidor.');
+            btn.disabled = false;
+            btn.textContent = 'Concluir Pedido »';
+        }
+    });
+
+    function copiarPix() {
+        const copyText = document.getElementById("pix-code");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); 
+        navigator.clipboard.writeText(copyText.value);
+        alert("Código PIX copiado! Cole no aplicativo do seu banco.");
+    }
+  </script>
 </body>
 </html>

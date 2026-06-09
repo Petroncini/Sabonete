@@ -118,8 +118,10 @@ const PRODUCTS = [
 // ============================================================
 // ESTADO DA APLICAÇÃO
 // ============================================================
+let allProducts = [];
+
 const state = {
-    cart: [],
+    cart: JSON.parse(localStorage.getItem('cart') || '[]'),
     currentFilter: 'todos',
     carouselIndex: 0,
     carouselTotal: 3,
@@ -252,14 +254,39 @@ function renderProducts(category) {
 
 // Simula uma Fetch API assíncrona para os dados de produto
 function fetchProducts(category) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const filtered = category === 'todos'
-                ? PRODUCTS
-                : PRODUCTS.filter(p => p.category === category);
-            resolve(filtered);
-        }, 80);
-    });
+    return fetch('http://localhost:3000/api/produtos')
+        .then(res => res.json())
+        .then(data => {
+            // Map keys from DB to frontend expected format
+            const imageMap = {
+                'Sabonete de Lavanda': 'imagens/produtos/lavanda.png',
+                'Sabonete de Argila Rosa': 'imagens/produtos/argila.png',
+                'Sabonete de Café & Baunilha': 'imagens/produtos/cafe.png'
+            };
+
+            const formattedProducts = data.map(p => ({
+                id: p.id,
+                name: p.nome,
+                category: 'todos', // DB currently doesn't have category, defaulting
+                price: parseFloat(p.preco),
+                badge: '',
+                badgeLabel: '',
+                tags: [],
+                desc: p.descricao,
+                img: imageMap[p.nome] || 'imagens/produtos/placeholder.png', // Fallback image
+                details: `Peso: ${p.peso_gramas}g`,
+                ingredients: 'Ingredientes naturais'
+            }));
+            
+            allProducts = formattedProducts;
+
+            if (category === 'todos') return formattedProducts;
+            return formattedProducts.filter(p => p.category === category);
+        })
+        .catch(err => {
+            console.error('Error fetching products:', err);
+            return [];
+        });
 }
 
 function createProductCard(p) {
@@ -303,7 +330,7 @@ function initFilterButtons() {
 // CARRINHO
 // ============================================================
 function addToCart(productId, btnEl) {
-    const product = PRODUCTS.find(p => p.id === productId);
+    const product = allProducts.find(p => p.id === productId);
     if (!product) return;
 
     const existing = state.cart.find(item => item.id === productId);
@@ -312,6 +339,8 @@ function addToCart(productId, btnEl) {
     } else {
         state.cart.push({ ...product, qty: 1 });
     }
+
+    localStorage.setItem('cart', JSON.stringify(state.cart));
 
     // Feedback visual no botão
     btnEl.textContent = '✓ Adicionado';
@@ -322,6 +351,35 @@ function addToCart(productId, btnEl) {
     }, 1500);
 
     updateCartBadge();
+}
+
+function initCartUI() {
+    updateCartBadge();
+}
+
+function removeFromCart(productId) {
+    state.cart = state.cart.filter(item => item.id !== productId);
+    localStorage.setItem('cart', JSON.stringify(state.cart));
+    updateCartBadge();
+    if (typeof renderCart === 'function') {
+        renderCart();
+    }
+}
+
+function updateQty(productId, change) {
+    const existing = state.cart.find(item => item.id === productId);
+    if (existing) {
+        existing.qty += change;
+        if (existing.qty <= 0) {
+            removeFromCart(productId);
+            return;
+        }
+        localStorage.setItem('cart', JSON.stringify(state.cart));
+        updateCartBadge();
+        if (typeof renderCart === 'function') {
+            renderCart();
+        }
+    }
 }
 
 function updateCartBadge() {
@@ -399,11 +457,36 @@ function closeModal() {
 }
 
 function fetchProductById(id) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(PRODUCTS.find(p => p.id === id) || null);
-        }, 60);
-    });
+    return fetch('http://localhost:3000/api/produtos')
+        .then(res => res.json())
+        .then(data => {
+            const product = data.find(p => p.id === id);
+            if (!product) return null;
+
+            const imageMap = {
+                'Sabonete de Lavanda': 'imagens/produtos/lavanda.png',
+                'Sabonete de Argila Rosa': 'imagens/produtos/argila.png',
+                'Sabonete de Café & Baunilha': 'imagens/produtos/cafe.png'
+            };
+
+            return {
+                id: product.id,
+                name: product.nome,
+                category: 'todos',
+                price: parseFloat(product.preco),
+                badge: '',
+                badgeLabel: '',
+                tags: [],
+                desc: product.descricao,
+                img: imageMap[product.nome] || 'imagens/produtos/placeholder.png',
+                details: `Peso: ${product.peso_gramas}g. Dimensões: ${product.comprimento_cm}x${product.largura_cm}x${product.altura_cm}cm`,
+                ingredients: 'Ingredientes naturais e orgânicos'
+            };
+        })
+        .catch(err => {
+            console.error(err);
+            return null;
+        });
 }
 
 // ============================================================
