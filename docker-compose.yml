@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:alpine
+    container_name: sabonete_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin_password
+      POSTGRES_DB: sabonete
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      # Monta o arquivo SQL para que o PostgreSQL inicialize as tabelas automaticamente na primeira vez
+      - ./backend/database.sql:/docker-entrypoint-initdb.d/init.sql
+      # Volume persistente para não perder os dados quando o container parar
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
