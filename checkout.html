@@ -189,6 +189,7 @@
                 
                 // Limpa carrinho
                 state.cart = [];
+                localStorage.setItem(getCartKey(), JSON.stringify(state.cart));
                 updateCartBadge();
             } else {
                 alert("Erro: " + data.error);

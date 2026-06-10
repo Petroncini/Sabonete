@@ -28,8 +28,16 @@
   </script>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { background-color: var(--bg); }
-    .auth-container { background: #fff; border-radius: 14px; box-shadow: var(--shadow); padding: 3rem; }
+    body {
+      background-color: var(--bg);
+    }
+
+    .auth-container {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 3rem;
+    }
   </style>
 </head>
 
@@ -45,10 +53,12 @@
           <li><a href="index.html#produtos" class="nav-link">Produtos</a></li>
           <li><a href="index.html#contato" class="nav-link">Contato</a></li>
           <li><a href="login.html" class="nav-link active"><b>Entrar</b></a></li>
-          <li><a href="backoffice.html" class="nav-link text-xs uppercase tracking-widest text-secondary font-bold">Admin</a></li>
+          <li><a href="backoffice.html"
+              class="nav-link text-xs uppercase tracking-widest text-secondary font-bold">Admin</a></li>
         </ul>
         <div class="flex items-center gap-4">
-          <a href="carrinho.html" id="cart-icon-link" aria-label="Ver carrinho" class="relative p-1 transition-transform hover:scale-110 flex items-center justify-center">
+          <a href="carrinho.html" id="cart-icon-link" aria-label="Ver carrinho"
+            class="relative p-1 transition-transform hover:scale-110 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
               stroke="currentColor" style="color:var(--heading)">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
@@ -56,8 +66,10 @@
             </svg>
             <span id="cart-badge" aria-live="polite">0</span>
           </a>
-          <button id="hamburger" class="md:hidden p-1" aria-label="Abrir menu" aria-expanded="false" style="color:var(--heading)">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <button id="hamburger" class="md:hidden p-1" aria-label="Abrir menu" aria-expanded="false"
+            style="color:var(--heading)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
@@ -78,7 +90,7 @@
         <p class="section-subtitle text-center">Acesse ou crie sua conta para gerenciar pedidos</p>
         <div class="floral-divider"><span>🌸</span></div>
       </div>
-      
+
       <div class="grid md:grid-cols-2 gap-8 mt-12">
         <!-- Login -->
         <div class="auth-container reveal reveal-delay-1">
@@ -96,7 +108,7 @@
             <p class="text-sm mt-4 text-center cursor-pointer" style="color:var(--secondary)">Esqueci minha senha</p>
           </form>
         </div>
-        
+
         <!-- Cadastro -->
         <div class="auth-container reveal reveal-delay-2" style="background-color:var(--cream)">
           <h2 class="font-head text-2xl mb-6 text-center" style="color:var(--heading);">Criar uma conta</h2>
@@ -128,55 +140,55 @@
   <script src="main.js"></script>
   <script>
     document.getElementById('form-login').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('login-email').value;
-        const senha = document.getElementById('login-pass').value;
-        
-        try {
-            const res = await fetch('http://localhost:3000/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, senha })
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                alert('Login bem sucedido!');
-                window.location.href = data.user.role === 'admin' ? 'backoffice.html' : 'index.html';
-            } else {
-                alert(data.error);
-            }
-        } catch (err) {
-            alert('Erro ao conectar com o servidor.');
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const senha = document.getElementById('login-pass').value;
+
+      try {
+        const res = await fetch('http://localhost:3000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.location.href = 'index.html';
+        } else {
+          alert(data.error);
         }
+      } catch (err) {
+        alert('Erro ao conectar com o servidor.');
+      }
     });
 
     document.getElementById('form-register').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const nome = document.getElementById('reg-name').value;
-        const email = document.getElementById('reg-email').value;
-        const senha = document.getElementById('reg-pass').value;
-        
-        try {
-            const res = await fetch('http://localhost:3000/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, email, senha })
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-                alert('Cadastro realizado! Agora faça o login.');
-                document.getElementById('form-register').reset();
-            } else {
-                alert(data.error);
-            }
-        } catch (err) {
-            alert('Erro ao conectar com o servidor.');
+      e.preventDefault();
+      const nome = document.getElementById('reg-name').value;
+      const email = document.getElementById('reg-email').value;
+      const senha = document.getElementById('reg-pass').value;
+
+      try {
+        const res = await fetch('http://localhost:3000/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, email, senha })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          alert('Cadastro realizado! Agora faça o login.');
+          document.getElementById('form-register').reset();
+        } else {
+          alert(data.error);
         }
+      } catch (err) {
+        alert('Erro ao conectar com o servidor.');
+      }
     });
   </script>
 </body>
+
 </html>

@@ -120,8 +120,23 @@ const PRODUCTS = [
 // ============================================================
 let allProducts = [];
 
+function getCartKey() {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        try {
+            const user = JSON.parse(userStr);
+            if (user && user.id) {
+                return `cart_${user.id}`;
+            } else if (user && user.email) {
+                return `cart_${user.email}`;
+            }
+        } catch(e) {}
+    }
+    return 'cart_guest';
+}
+
 const state = {
-    cart: JSON.parse(localStorage.getItem('cart') || '[]'),
+    cart: JSON.parse(localStorage.getItem(getCartKey()) || '[]'),
     currentFilter: 'todos',
     carouselIndex: 0,
     carouselTotal: 3,
@@ -132,6 +147,7 @@ const state = {
 // DOM READY
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+    initAuthUI();
     initNavbar();
     initRevealScroll();
     renderProducts('todos');
@@ -141,6 +157,89 @@ document.addEventListener('DOMContentLoaded', () => {
     initModal();
     initCartUI();
 });
+
+// ============================================================
+// AUTHENTICATION UI
+// ============================================================
+function initAuthUI() {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    let user = null;
+    try { user = JSON.parse(userStr); } catch(e) {}
+
+    // Encontra os links de login e admin
+    const loginLinks = document.querySelectorAll('a[href="login.html"]');
+    const adminLinks = document.querySelectorAll('a[href="backoffice.html"]:not(#admin-link-dropdown)');
+
+    const navContainer = document.querySelector('.flex.items-center.gap-4');
+
+    if (token && user && navContainer) {
+        if (!document.getElementById('user-menu-container')) {
+            const userMenuHTML = `
+              <div id="user-menu-container" class="relative">
+                <button id="user-icon-btn" class="p-1 transition-transform hover:scale-110 flex items-center justify-center" aria-label="Menu de usuário">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color:var(--heading)">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </button>
+                <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  <span id="user-name-display" class="block px-4 py-2 text-sm text-gray-700 border-b">Olá, ${user.nome || user.name || 'Usuário'}</span>
+                  ${user.role === 'admin' ? '<a href="backoffice.html" id="admin-link-dropdown" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Admin Panel</a>' : ''}
+                  <a href="#" id="logout-btn" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Sair</a>
+                </div>
+              </div>
+            `;
+            navContainer.insertAdjacentHTML('afterbegin', userMenuHTML);
+        }
+
+        const userMenuContainer = document.getElementById('user-menu-container');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userIconBtn = document.getElementById('user-icon-btn');
+        const userDropdown = document.getElementById('user-dropdown');
+
+        loginLinks.forEach(link => {
+            if(link.parentElement.tagName === 'LI') link.parentElement.style.display = 'none';
+            else link.style.display = 'none';
+        });
+
+        adminLinks.forEach(link => {
+            if(link.parentElement.tagName === 'LI') link.parentElement.style.display = 'none';
+            else link.style.display = 'none';
+        });
+
+        if (userIconBtn && userDropdown) {
+            userIconBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                userDropdown.classList.toggle('hidden');
+            });
+            document.addEventListener('click', (e) => {
+                if (!userMenuContainer.contains(e.target)) {
+                    userDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = 'index.html';
+            });
+        }
+    } else {
+        loginLinks.forEach(link => {
+            if(link.parentElement.tagName === 'LI') link.parentElement.style.display = 'block';
+            else link.style.display = 'block';
+        });
+        
+        // Esconde o admin link para usuários não logados
+        adminLinks.forEach(link => {
+            if(link.parentElement.tagName === 'LI') link.parentElement.style.display = 'none';
+            else link.style.display = 'none';
+        });
+    }
+}
 
 // ============================================================
 // NAVBAR: scroll + hero mode + mobile hamburger
@@ -255,13 +354,28 @@ function renderProducts(category) {
 // Simula uma Fetch API assíncrona para os dados de produto
 function fetchProducts(category) {
     return fetch('http://localhost:3000/api/produtos')
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`Erro na API: ${res.status}`);
+            }
+            return res.json();
+        })
         .then(data => {
+            if (!Array.isArray(data)) {
+                console.error('Resposta da API não é um array:', data);
+                return [];
+            }
+            
             // Map keys from DB to frontend expected format
             const imageMap = {
                 'Sabonete de Lavanda': 'imagens/produtos/lavanda.png',
                 'Sabonete de Argila Rosa': 'imagens/produtos/argila.png',
-                'Sabonete de Café & Baunilha': 'imagens/produtos/cafe.png'
+                'Sabonete de Café & Baunilha': 'imagens/produtos/cafe.png',
+                'Sabonete de Aveia & Mel': 'imagens/produtos/aveia.png',
+                'Sabonete de Hortelã & Eucalipto': 'imagens/produtos/hortela.png',
+                'Kit Presente Especial': 'imagens/produtos/kit1.png',
+                'Sabonete de Rosa & Gerânio': 'imagens/produtos/rosa.png',
+                'Kit Cuidado Diário': 'imagens/produtos/kit2.png'
             };
 
             const formattedProducts = data.map(p => ({
@@ -340,7 +454,7 @@ function addToCart(productId, btnEl) {
         state.cart.push({ ...product, qty: 1 });
     }
 
-    localStorage.setItem('cart', JSON.stringify(state.cart));
+    localStorage.setItem(getCartKey(), JSON.stringify(state.cart));
 
     // Feedback visual no botão
     btnEl.textContent = '✓ Adicionado';
@@ -359,7 +473,7 @@ function initCartUI() {
 
 function removeFromCart(productId) {
     state.cart = state.cart.filter(item => item.id !== productId);
-    localStorage.setItem('cart', JSON.stringify(state.cart));
+    localStorage.setItem(getCartKey(), JSON.stringify(state.cart));
     updateCartBadge();
     if (typeof renderCart === 'function') {
         renderCart();
@@ -374,7 +488,7 @@ function updateQty(productId, change) {
             removeFromCart(productId);
             return;
         }
-        localStorage.setItem('cart', JSON.stringify(state.cart));
+        localStorage.setItem(getCartKey(), JSON.stringify(state.cart));
         updateCartBadge();
         if (typeof renderCart === 'function') {
             renderCart();
@@ -466,7 +580,12 @@ function fetchProductById(id) {
             const imageMap = {
                 'Sabonete de Lavanda': 'imagens/produtos/lavanda.png',
                 'Sabonete de Argila Rosa': 'imagens/produtos/argila.png',
-                'Sabonete de Café & Baunilha': 'imagens/produtos/cafe.png'
+                'Sabonete de Café & Baunilha': 'imagens/produtos/cafe.png',
+                'Sabonete de Aveia & Mel': 'imagens/produtos/aveia.png',
+                'Sabonete de Hortelã & Eucalipto': 'imagens/produtos/hortela.png',
+                'Kit Presente Especial': 'imagens/produtos/kit1.png',
+                'Sabonete de Rosa & Gerânio': 'imagens/produtos/rosa.png',
+                'Kit Cuidado Diário': 'imagens/produtos/kit2.png'
             };
 
             return {
