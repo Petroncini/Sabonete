@@ -6,6 +6,36 @@
 'use strict';
 
 // ============================================================
+// GUARDA DE SESSÃO — detecta token "fantasma" (válido mas de um
+// usuário que não existe mais, ex: banco resetado em dev) e força
+// logout + redirect pro login em vez de deixar a página quebrar
+// com um erro confuso de banco de dados.
+// ============================================================
+(function installSessionGuard() {
+    const originalFetch = window.fetch;
+    window.fetch = async function (...args) {
+        const response = await originalFetch.apply(this, args);
+        if (response.status === 401 && localStorage.getItem('token')) {
+            const isLoginPage = window.location.pathname.endsWith('login.html');
+            let isSessaoInvalida = false;
+            try {
+                const clone = response.clone();
+                const data = await clone.json();
+                isSessaoInvalida = data?.error === 'SESSAO_INVALIDA';
+            } catch (e) { /* corpo não é JSON, ignora */ }
+
+            if (isSessaoInvalida && !isLoginPage) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                alert('Sua sessão expirou. Faça login novamente.');
+                window.location.href = 'login.html';
+            }
+        }
+        return response;
+    };
+})();
+
+// ============================================================
 // DADOS DOS PRODUTOS (simulando um endpoint de API)
 // ============================================================
 const PRODUCTS = [

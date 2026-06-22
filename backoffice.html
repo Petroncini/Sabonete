@@ -230,6 +230,30 @@
   </main>
   
   <script>
+    // Guarda de sessão — detecta token "fantasma" (válido mas de um usuário que
+    // não existe mais, ex: banco resetado em dev) e força logout + redirect.
+    (function installSessionGuard() {
+        const originalFetch = window.fetch;
+        window.fetch = async function (...args) {
+            const response = await originalFetch.apply(this, args);
+            if (response.status === 401 && localStorage.getItem('token')) {
+                let isSessaoInvalida = false;
+                try {
+                    const data = await response.clone().json();
+                    isSessaoInvalida = data?.error === 'SESSAO_INVALIDA';
+                } catch (e) { /* corpo não é JSON, ignora */ }
+
+                if (isSessaoInvalida) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    alert('Sua sessão expirou. Faça login novamente.');
+                    window.location.href = 'login.html';
+                }
+            }
+            return response;
+        };
+    })();
+
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
