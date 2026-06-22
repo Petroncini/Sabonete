@@ -1,69 +1,81 @@
-// Utilitário para gerar o Payload do PIX (BR Code / EMV)
-// Implementação baseada nas especificações do Banco Central do Brasil
+// Utilitário de PIX via MercadoPago SDK
+// Substitui o gerador local de BR Code pela API oficial do Mercado Pago
 
-function formatLength(str) {
-    return str.length.toString().padStart(2, '0');
-}
+const { MercadoPagoConfig, Payment } = require('mercadopago');
 
-function calculateCRC16(payload) {
-    let polynomial = 0x1021;
-    let crc = 0xFFFF;
-
-    for (let i = 0; i < payload.length; i++) {
-        crc ^= payload.charCodeAt(i) << 8;
-        for (let j = 0; j < 8; j++) {
-            if ((crc & 0x8000) !== 0) {
-                crc = (crc << 1) ^ polynomial;
-            } else {
-                crc <<= 1;
-            }
-        }
+// Inicializa o cliente com o Access Token de ambiente
+const getMercadoPagoClient = () => {
+    const accessToken = process.env.MP_ACCESS_TOKEN;
+    if (!accessToken) {
+        throw new Error('MP_ACCESS_TOKEN não configurado no .env');
     }
-    return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+    return new MercadoPagoConfig({ accessToken });
+};
+
+/**
+ * Cria um pagamento PIX via Mercado Pago e retorna os dados do QR code.
+ *
+ * @param {object} params
+ * @param {number} params.amount       - Valor total do pagamento (ex: 59.90)
+ * @param {string} params.description  - Descrição do pedido
+ * @param {string} params.payerEmail   - E-mail do comprador
+ * @param {string} params.payerName    - Nome do comprador
+ * @param {string} params.externalRef  - Referência única (ex: "PEDIDO-42")
+ *
+ * @returns {Promise<{
+ *   payment_id: number,
+ *   qr_code: string,       // Copia e cola
+ *   qr_code_base64: string // Imagem do QR code em Base64
+ * }>}
+ */
+async function createPixPayment({ amount, description, payerEmail, payerName, externalRef }) {
+    const client = getMercadoPagoClient();
+    const paymentApi = new Payment(client);
+
+    const result = await paymentApi.create({
+        body: {
+            transaction_amount: Number(amount),
+            description: description,
+            payment_method_id: 'pix',
+            external_reference: externalRef,
+            notification_url: process.env.MP_WEBHOOK_URL || undefined,
+            payer: {
+                email: payerEmail,
+                first_name: payerName ? payerName.split(' ')[0] : 'Cliente',
+                last_name: payerName ? payerName.split(' ').slice(1).join(' ') : '',
+            },
+        },
+    });
+
+    const poi = result.point_of_interaction?.transaction_data;
+
+    if (!poi?.qr_code) {
+        throw new Error('MercadoPago não retornou os dados do QR code PIX.');
+    }
+
+    return {
+        payment_id: result.id,
+        status: result.status,
+        qr_code: poi.qr_code,           // Copia e cola (texto)
+        qr_code_base64: poi.qr_code_base64, // Imagem PNG em Base64
+    };
 }
 
-function generatePixPayload(key, merchantName, merchantCity, txid, amount) {
-    // 00 - Payload Format Indicator
-    let payload = "000201";
-    
-    // 26 - Merchant Account Information
-    let gui = "0014BR.GOV.BCB.PIX";
-    let keyStr = `01${formatLength(key)}${key}`;
-    let accountInfo = `${gui}${keyStr}`;
-    payload += `26${formatLength(accountInfo)}${accountInfo}`;
-    
-    // 52 - Merchant Category Code
-    payload += "52040000";
-    
-    // 53 - Transaction Currency (BRL)
-    payload += "5303986";
-    
-    // 54 - Transaction Amount
-    let amountStr = amount.toFixed(2);
-    payload += `54${formatLength(amountStr)}${amountStr}`;
-    
-    // 58 - Country Code
-    payload += "5802BR";
-    
-    // 59 - Merchant Name
-    let formattedName = merchantName.substring(0, 25).toUpperCase();
-    payload += `59${formatLength(formattedName)}${formattedName}`;
-    
-    // 60 - Merchant City
-    let formattedCity = merchantCity.substring(0, 15).toUpperCase();
-    payload += `60${formatLength(formattedCity)}${formattedCity}`;
-    
-    // 62 - Additional Data Field Template (TXID)
-    let formattedTxid = txid.substring(0, 25).toUpperCase();
-    let additionalData = `05${formatLength(formattedTxid)}${formattedTxid}`;
-    payload += `62${formatLength(additionalData)}${additionalData}`;
-    
-    // 63 - CRC16
-    payload += "6304";
-    let crc = calculateCRC16(payload);
-    payload += crc;
-    
-    return payload;
+/**
+ * Consulta o status de um pagamento pelo ID.
+ *
+ * @param {number|string} paymentId
+ * @returns {Promise<{ id: number, status: string, status_detail: string }>}
+ */
+async function getPixPaymentStatus(paymentId) {
+    const client = getMercadoPagoClient();
+    const paymentApi = new Payment(client);
+    const result = await paymentApi.get({ id: paymentId });
+    return {
+        id: result.id,
+        status: result.status,
+        status_detail: result.status_detail,
+    };
 }
 
-module.exports = { generatePixPayload };
+module.exports = { createPixPayment, getPixPaymentStatus };

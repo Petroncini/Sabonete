@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS produtos (
     largura_cm INTEGER NOT NULL,
     altura_cm INTEGER NOT NULL,
     estoque INTEGER DEFAULT 0 CHECK (estoque >= 0), -- Impede estoque negativo no banco
+    imagem_url VARCHAR(255),
+    categoria VARCHAR(50),
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -33,7 +35,8 @@ CREATE TABLE IF NOT EXISTS pedidos (
     total DECIMAL(10,2) NOT NULL,
     frete DECIMAL(10,2) NOT NULL,
     status VARCHAR(20) DEFAULT 'pendente', -- pendente, pago, enviado, cancelado
-    txid VARCHAR(50) UNIQUE, -- O identificador do PIX
+    txid VARCHAR(50) UNIQUE,              -- Referência externa do pedido (ex: PEDIDO-42)
+    mp_payment_id VARCHAR(50) UNIQUE,     -- ID do pagamento retornado pelo MercadoPago
     codigo_rastreio VARCHAR(50),
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

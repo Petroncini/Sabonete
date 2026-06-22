@@ -353,7 +353,7 @@ function renderProducts(category) {
 
 // Simula uma Fetch API assíncrona para os dados de produto
 function fetchProducts(category) {
-    return fetch('http://localhost:3000/api/produtos')
+    return fetch('/api/produtos')
         .then(res => {
             if (!res.ok) {
                 throw new Error(`Erro na API: ${res.status}`);
@@ -365,31 +365,18 @@ function fetchProducts(category) {
                 console.error('Resposta da API não é um array:', data);
                 return [];
             }
-            
-            // Map keys from DB to frontend expected format
-            const imageMap = {
-                'Sabonete de Lavanda': 'imagens/produtos/lavanda.png',
-                'Sabonete de Argila Rosa': 'imagens/produtos/argila.png',
-                'Sabonete de Café & Baunilha': 'imagens/produtos/cafe.png',
-                'Sabonete de Aveia & Mel': 'imagens/produtos/aveia.png',
-                'Sabonete de Hortelã & Eucalipto': 'imagens/produtos/hortela.png',
-                'Kit Presente Especial': 'imagens/produtos/kit1.png',
-                'Sabonete de Rosa & Gerânio': 'imagens/produtos/rosa.png',
-                'Kit Cuidado Diário': 'imagens/produtos/kit2.png'
-            };
-
             const formattedProducts = data.map(p => ({
                 id: p.id,
                 name: p.nome,
-                category: 'todos', // DB currently doesn't have category, defaulting
+                category: p.categoria || 'todos',
                 price: parseFloat(p.preco),
-                badge: '',
-                badgeLabel: '',
-                tags: [],
+                badge: p.categoria === 'kits' ? 'kit' : (p.id > 6 ? 'new' : ''),
+                badgeLabel: p.categoria === 'kits' ? 'Kit' : (p.id > 6 ? 'Novo' : ''),
+                tags: [p.categoria || 'artesanal'],
                 desc: p.descricao,
-                img: imageMap[p.nome] || 'imagens/produtos/placeholder.png', // Fallback image
+                img: p.imagem_url || 'imagens/produtos/placeholder.png',
                 details: `Peso: ${p.peso_gramas}g`,
-                ingredients: 'Ingredientes naturais'
+                ingredients: 'Ingredientes naturais e orgânicos'
             }));
             
             allProducts = formattedProducts;
@@ -571,33 +558,22 @@ function closeModal() {
 }
 
 function fetchProductById(id) {
-    return fetch('http://localhost:3000/api/produtos')
+    return fetch('/api/produtos')
         .then(res => res.json())
         .then(data => {
             const product = data.find(p => p.id === id);
             if (!product) return null;
 
-            const imageMap = {
-                'Sabonete de Lavanda': 'imagens/produtos/lavanda.png',
-                'Sabonete de Argila Rosa': 'imagens/produtos/argila.png',
-                'Sabonete de Café & Baunilha': 'imagens/produtos/cafe.png',
-                'Sabonete de Aveia & Mel': 'imagens/produtos/aveia.png',
-                'Sabonete de Hortelã & Eucalipto': 'imagens/produtos/hortela.png',
-                'Kit Presente Especial': 'imagens/produtos/kit1.png',
-                'Sabonete de Rosa & Gerânio': 'imagens/produtos/rosa.png',
-                'Kit Cuidado Diário': 'imagens/produtos/kit2.png'
-            };
-
             return {
                 id: product.id,
                 name: product.nome,
-                category: 'todos',
+                category: product.categoria || 'todos',
                 price: parseFloat(product.preco),
-                badge: '',
-                badgeLabel: '',
-                tags: [],
+                badge: product.categoria === 'kits' ? 'kit' : (product.id > 6 ? 'new' : ''),
+                badgeLabel: product.categoria === 'kits' ? 'Kit' : (product.id > 6 ? 'Novo' : ''),
+                tags: [product.categoria || 'artesanal'],
                 desc: product.descricao,
-                img: imageMap[product.nome] || 'imagens/produtos/placeholder.png',
+                img: product.imagem_url || 'imagens/produtos/placeholder.png',
                 details: `Peso: ${product.peso_gramas}g. Dimensões: ${product.comprimento_cm}x${product.largura_cm}x${product.altura_cm}cm`,
                 ingredients: 'Ingredientes naturais e orgânicos'
             };

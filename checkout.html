@@ -81,8 +81,15 @@
             </div>
           </div>
 
+          <!-- Opções de Frete (carregadas via JS ao sair do CEP) -->
+          <div id="frete-opcoes-wrapper" class="mb-8">
+            <h2 class="font-head text-2xl mb-3" style="color:var(--heading);">2. Frete</h2>
+            <p class="text-sm text-gray-400 mb-3">Informe seu CEP acima para ver as opções de entrega.</p>
+            <div id="frete-opcoes"></div>
+          </div>
+
           <!-- Pagamento -->
-          <h2 class="font-head text-2xl mb-4" style="color:var(--heading);">2. Pagamento</h2>
+          <h2 class="font-head text-2xl mb-4" style="color:var(--heading);">3. Pagamento</h2>
           <div class="grid sm:grid-cols-2 gap-4 mb-8">
             <label class="cursor-pointer block relative">
               <input type="radio" name="pagamento" value="pix" class="peer hidden" required />
@@ -113,10 +120,16 @@
 
         <!-- Área do PIX (Oculta por padrão) -->
         <div id="pix-area" class="hidden text-center mt-8 p-6 bg-[var(--cream)] rounded-lg border border-[var(--primary)]">
-          <h2 class="font-head text-2xl mb-2" style="color:var(--heading);">Pedido Criado com Sucesso!</h2>
-          <p class="mb-4">Copie o código abaixo e pague no app do seu banco para confirmar o pedido.</p>
+          <h2 class="font-head text-2xl mb-2" style="color:var(--heading);">🎉 Pedido Criado com Sucesso!</h2>
+          <p id="pix-total" class="text-lg font-bold mb-2" style="color:var(--primary)"></p>
+          <p class="mb-4 text-sm text-gray-600">Escaneie o QR code ou copie o código abaixo e pague no app do seu banco.</p>
+          <!-- QR Code PIX -->
+          <div id="pix-qr-wrapper" class="hidden flex justify-center mb-4">
+            <img id="pix-qr-img" src="" alt="QR Code PIX" class="w-48 h-48 border-4 border-white rounded-xl shadow-md" />
+          </div>
           <textarea id="pix-code" class="w-full p-4 rounded text-sm font-mono bg-white border border-gray-300" rows="4" readonly></textarea>
           <button type="button" onclick="copiarPix()" class="btn-primary mt-4">Copiar Código PIX</button>
+          <p class="text-xs text-gray-400 mt-3">O pedido será confirmado automaticamente após o pagamento ser aprovado.</p>
         </div>
       </div>
     </div>
@@ -129,64 +142,150 @@
   </footer>
   <script src="main.js"></script>
   <script>
-    // Recupera token do usuário
+    // ── Autenticação ───────────────────────────────────────────────────
     const token = localStorage.getItem('token');
     if (!token) {
         alert("Você precisa fazer login para finalizar a compra.");
         window.location.href = 'login.html';
     }
 
-    // Calcula total dinâmico ao carregar a página
-    setTimeout(() => {
+    let freteEscolhido = null; // { nome, preco, prazo }
+
+    // ── Cálculo de frete via SuperFrete ───────────────────────────────
+    const cepInput = document.getElementById('cep');
+    cepInput.addEventListener('blur', calcularFrete);
+
+    async function calcularFrete() {
+        const cep = cepInput.value.replace(/\D/g, '');
+        if (cep.length !== 8) return;
+
+        const areaFrete = document.getElementById('frete-opcoes');
+        if (!areaFrete) return;
+
+        if (state.cart.length === 0) {
+            areaFrete.innerHTML = '<p class="text-sm text-gray-500">Adicione produtos ao carrinho primeiro.</p>';
+            return;
+        }
+
+        areaFrete.innerHTML = '<p class="text-sm text-gray-400 animate-pulse">Calculando frete…</p>';
+
+        const carrinho = state.cart.map(item => ({ produto_id: item.id, quantidade: item.qty }));
+
+        try {
+            const res = await fetch('/api/frete/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ carrinho, cep_destino: cep }),
+            });
+            const data = await res.json();
+
+            if (!res.ok || !data.opcoes_frete) {
+                areaFrete.innerHTML = `<p class="text-sm text-red-500">Erro ao calcular frete: ${data.error || 'tente novamente'}</p>`;
+                return;
+            }
+
+            // Renderiza opções de frete como radio cards
+            areaFrete.innerHTML = data.opcoes_frete.map((op, i) => `
+              <label class="cursor-pointer block relative mb-2">
+                <input type="radio" name="frete" value="${i}" class="peer hidden" ${i === 0 ? 'checked' : ''} />
+                <div class="radio-card peer-checked:border-primary peer-checked:bg-[var(--cream)]">
+                  <span class="font-bold block" style="color:var(--heading)">${op.transportadora ? op.transportadora + ' — ' : ''}${op.nome}</span>
+                  <span class="text-lg font-semibold" style="color:var(--primary)">${op.preco_formatted || 'R$ ' + op.preco.toFixed(2).replace('.', ',')}</span>
+                  <span class="text-sm text-gray-500 ml-2">${op.prazo}</span>
+                </div>
+              </label>
+            `).join('');
+
+            // Seleciona a primeira opção por padrão
+            freteEscolhido = data.opcoes_frete[0];
+            atualizarTotal();
+
+            // Atualiza seleção ao trocar
+            areaFrete.querySelectorAll('input[name="frete"]').forEach((radio, i) => {
+                radio.addEventListener('change', () => {
+                    freteEscolhido = data.opcoes_frete[i];
+                    atualizarTotal();
+                });
+            });
+
+        } catch (err) {
+            console.error(err);
+            areaFrete.innerHTML = '<p class="text-sm text-red-500">Erro ao conectar com o servidor de frete.</p>';
+        }
+    }
+
+    function atualizarTotal() {
         const cartTotal = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-        // Simulando frete fixo de 20.00
-        const frete = 20.00;
+        const frete = freteEscolhido ? freteEscolhido.preco : 0;
         const total = cartTotal + frete;
         document.getElementById('total-checkout').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
-    }, 500);
+    }
 
+    // Cálculo inicial ao carregar (sem frete ainda)
+    setTimeout(() => { atualizarTotal(); }, 500);
+
+    // ── Submit do formulário ──────────────────────────────────────────
     document.getElementById('form-checkout').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         if (state.cart.length === 0) {
             alert('Seu carrinho está vazio!');
             return;
         }
+        if (!freteEscolhido) {
+            alert('Informe seu CEP e escolha uma opção de frete antes de continuar.');
+            cepInput.focus();
+            return;
+        }
 
-        const endereco = document.getElementById('endereco').value + " - CEP: " + document.getElementById('cep').value;
+        const endereco = document.getElementById('endereco').value + " — CEP: " + cepInput.value;
         const btn = e.target.querySelector('button[type="submit"]');
-        
+
         btn.disabled = true;
-        btn.textContent = 'Processando...';
+        btn.textContent = 'Processando…';
 
         try {
-            // Prepara carrinho para a API
-            const payloadCarrinho = state.cart.map(item => ({
+            const carrinho = state.cart.map(item => ({
                 produto_id: item.id,
-                quantidade: item.qty
+                quantidade: item.qty,
             }));
 
-            const res = await fetch('http://localhost:3000/api/pedidos', {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+            const res = await fetch('/api/pedidos', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({ 
-                    carrinho: payloadCarrinho,
+                body: JSON.stringify({
+                    carrinho,
                     endereco_entrega: endereco,
-                    valor_frete: 20.00 // Fixo por enquanto
-                })
+                    valor_frete: freteEscolhido.preco,
+                    email_pagador: user.email || '',
+                }),
             });
-            
+
             const data = await res.json();
-            
+
             if (res.ok) {
-                // Esconde formulário, mostra PIX
+                // Esconde formulário
                 document.getElementById('form-checkout').style.display = 'none';
-                document.getElementById('pix-area').classList.remove('hidden');
+
+                // Exibe área do PIX
+                const pixArea = document.getElementById('pix-area');
+                pixArea.classList.remove('hidden');
                 document.getElementById('pix-code').value = data.pix_copia_cola;
-                
+
+                // Exibe QR code base64 se disponível
+                if (data.pix_qr_code_base64) {
+                    document.getElementById('pix-qr-img').src = `data:image/png;base64,${data.pix_qr_code_base64}`;
+                    document.getElementById('pix-qr-wrapper').classList.remove('hidden');
+                }
+
+                document.getElementById('pix-total').textContent =
+                    `Total: R$ ${parseFloat(data.total).toFixed(2).replace('.', ',')}`;
+
                 // Limpa carrinho
                 state.cart = [];
                 localStorage.setItem(getCartKey(), JSON.stringify(state.cart));
@@ -206,11 +305,12 @@
 
     function copiarPix() {
         const copyText = document.getElementById("pix-code");
-        copyText.select();
-        copyText.setSelectionRange(0, 99999); 
         navigator.clipboard.writeText(copyText.value);
-        alert("Código PIX copiado! Cole no aplicativo do seu banco.");
+        const btn = document.querySelector('#pix-area button[onclick="copiarPix()"]');
+        btn.textContent = '✅ Copiado!';
+        setTimeout(() => { btn.textContent = 'Copiar Código PIX'; }, 2000);
     }
   </script>
+
 </body>
 </html>

@@ -1,14 +1,18 @@
 const express = require('express');
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
-const { generatePixPayload } = require('../utils/pix');
+const { createPixPayment, getPixPaymentStatus } = require('../utils/pix');
+const { enviarEmailEnvio } = require('../utils/email');
 
 const router = express.Router();
 
-// Listar pedidos do usuário logado (Acesso Cliente)
+// ── Listar pedidos do usuário logado (Cliente) ───────────────────────────────
 router.get('/me', authenticateToken, async (req, res) => {
     try {
-        const pedidos = await db.query('SELECT * FROM pedidos WHERE usuario_id = $1 ORDER BY criado_em DESC', [req.user.id]);
+        const pedidos = await db.query(
+            'SELECT * FROM pedidos WHERE usuario_id = $1 ORDER BY criado_em DESC',
+            [req.user.id]
+        );
         res.json(pedidos.rows);
     } catch (error) {
         console.error(error);
@@ -16,10 +20,15 @@ router.get('/me', authenticateToken, async (req, res) => {
     }
 });
 
-// Listar TODOS os pedidos (Acesso Admin)
+// ── Listar TODOS os pedidos com dados do cliente (Admin) ──────────────────────
 router.get('/', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const pedidos = await db.query('SELECT * FROM pedidos ORDER BY criado_em DESC');
+        const pedidos = await db.query(`
+            SELECT p.*, u.email as email_cliente
+            FROM pedidos p
+            LEFT JOIN usuarios u ON p.usuario_id = u.id
+            ORDER BY p.criado_em DESC
+        `);
         res.json(pedidos.rows);
     } catch (error) {
         console.error(error);
@@ -27,29 +36,59 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
     }
 });
 
-// Criar Pedido (Cliente) - Gerencia transações e condições de corrida no estoque
+// ── Detalhes de um pedido específico com itens (Admin) ───────────────────────
+router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const pedidoRes = await db.query(`
+            SELECT p.*, u.email as email_cliente
+            FROM pedidos p
+            LEFT JOIN usuarios u ON p.usuario_id = u.id
+            WHERE p.id = $1
+        `, [id]);
+
+        if (pedidoRes.rows.length === 0) {
+            return res.status(404).json({ error: "Pedido não encontrado." });
+        }
+
+        const itensRes = await db.query(`
+            SELECT pi.quantidade, pi.preco_unitario, pr.nome, pr.imagem_url
+            FROM pedido_itens pi
+            LEFT JOIN produtos pr ON pi.produto_id = pr.id
+            WHERE pi.pedido_id = $1
+        `, [id]);
+
+        res.json({
+            ...pedidoRes.rows[0],
+            itens: itensRes.rows,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Erro ao buscar detalhes do pedido." });
+    }
+});
+
+// ── Criar Pedido (Cliente) ─────────────────────────────────────────────────────
 router.post('/', authenticateToken, async (req, res) => {
-    const client = await db.connect(); // Inicia conexão dedicada para transação
+    const client = await db.connect();
 
     try {
-        const { carrinho, endereco_entrega, valor_frete } = req.body;
-        
+        const { carrinho, endereco_entrega, valor_frete, email_pagador } = req.body;
+
         if (!carrinho || carrinho.length === 0) {
             return res.status(400).json({ error: "Carrinho vazio." });
         }
 
-        await client.query('BEGIN'); // INICIA A TRANSAÇÃO SQL
+        await client.query('BEGIN');
 
         let totalProdutos = 0;
         const itensProcessados = [];
+        const nomesProdutos = [];
 
-        // 1. Verificar e descontar estoque de cada produto (Evita Race Conditions)
         for (let item of carrinho) {
-            // O FOR UPDATE dá um lock na linha do produto até o fim da transação. 
-            // Se 2 pessoas comprarem o mesmo sabonete exato ao mesmo tempo, 
-            // a segunda vai esperar a primeira terminar de descontar.
             const resProduto = await client.query(
-                'SELECT preco, estoque FROM produtos WHERE id = $1 FOR UPDATE',
+                'SELECT nome, preco, estoque FROM produtos WHERE id = $1 FOR UPDATE',
                 [item.produto_id]
             );
 
@@ -60,10 +99,9 @@ router.post('/', authenticateToken, async (req, res) => {
             const produtoDb = resProduto.rows[0];
 
             if (produtoDb.estoque < item.quantidade) {
-                throw new Error(`Estoque insuficiente para o produto ID ${item.produto_id}.`);
+                throw new Error(`Estoque insuficiente para "${produtoDb.nome}".`);
             }
 
-            // Desconta o estoque
             await client.query(
                 'UPDATE produtos SET estoque = estoque - $1 WHERE id = $2',
                 [item.quantidade, item.produto_id]
@@ -71,6 +109,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
             const precoSubtotal = produtoDb.preco * item.quantidade;
             totalProdutos += precoSubtotal;
+            nomesProdutos.push(produtoDb.nome);
 
             itensProcessados.push({
                 produto_id: item.produto_id,
@@ -81,61 +120,65 @@ router.post('/', authenticateToken, async (req, res) => {
 
         const totalGeral = totalProdutos + valor_frete;
 
-        // 2. Criar o Pedido no Banco
         const resPedido = await client.query(
-            `INSERT INTO pedidos (usuario_id, cliente_nome, cliente_endereco, total, frete, status) 
+            `INSERT INTO pedidos (usuario_id, cliente_nome, cliente_endereco, total, frete, status)
              VALUES ($1, $2, $3, $4, $5, 'pendente') RETURNING id`,
             [req.user.id, req.user.nome || "Cliente", endereco_entrega, totalGeral, valor_frete]
         );
 
         const pedidoId = resPedido.rows[0].id;
+        const externalRef = `PEDIDO-${pedidoId}`;
 
-        // 3. Inserir os itens do pedido
         for (let item of itensProcessados) {
             await client.query(
-                `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario) 
+                `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario)
                  VALUES ($1, $2, $3, $4)`,
                 [pedidoId, item.produto_id, item.quantidade, item.preco_unitario]
             );
         }
 
-        // 4. Gerar o PIX com o ID da Transação (TXID)
-        const txid = `PEDIDO${pedidoId}`;
-        const pixPayload = generatePixPayload(
-            process.env.PIX_KEY || 'chave_padrao@email.com',
-            process.env.PIX_MERCHANT_NAME || 'Sabonete Store',
-            process.env.PIX_MERCHANT_CITY || 'Sao Paulo',
-            txid,
-            totalGeral
+        const descricaoPedido = nomesProdutos.join(', ').substring(0, 200) || 'Pedido Sabonetes';
+        const emailPagador = email_pagador || req.user.email || 'cliente@email.com';
+
+        const pixData = await createPixPayment({
+            amount: totalGeral,
+            description: descricaoPedido,
+            payerEmail: emailPagador,
+            payerName: req.user.nome || 'Cliente',
+            externalRef: externalRef,
+        });
+
+        await client.query(
+            'UPDATE pedidos SET txid = $1, mp_payment_id = $2 WHERE id = $3',
+            [externalRef, String(pixData.payment_id), pedidoId]
         );
 
-        // Atualizar o pedido com o TXID gerado
-        await client.query('UPDATE pedidos SET txid = $1 WHERE id = $2', [txid, pedidoId]);
-
-        await client.query('COMMIT'); // FINALIZA E CONFIRMA A TRANSAÇÃO
+        await client.query('COMMIT');
 
         res.status(201).json({
             message: "Pedido criado com sucesso!",
             pedido_id: pedidoId,
             total: totalGeral,
-            pix_copia_cola: pixPayload,
-            txid: txid
+            pix_copia_cola: pixData.qr_code,
+            pix_qr_code_base64: pixData.qr_code_base64,
+            mp_payment_id: pixData.payment_id,
+            txid: externalRef,
         });
 
     } catch (error) {
-        await client.query('ROLLBACK'); // SE DEU ERRO (ex: sem estoque), DESFAZ TUDO (Devolve o estoque)
+        await client.query('ROLLBACK');
         console.error("Erro na criação do pedido:", error.message);
         res.status(400).json({ error: error.message || "Erro ao processar o pedido." });
     } finally {
-        client.release(); // Libera a conexão de volta para o pool
+        client.release();
     }
 });
 
-// Confirmar Pagamento do Pedido (Apenas Admin)
+// ── Confirmar Pagamento (Admin) ───────────────────────────────────────────────
 router.patch('/:id/pagamento', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const pedido = await db.query(
             "UPDATE pedidos SET status = 'pago' WHERE id = $1 RETURNING *",
             [id]
@@ -150,6 +193,96 @@ router.patch('/:id/pagamento', authenticateToken, requireAdmin, async (req, res)
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Erro ao confirmar pagamento." });
+    }
+});
+
+// ── Marcar como Enviado + enviar e-mail pro cliente (Admin) ──────────────────
+router.patch('/:id/envio', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { codigo_rastreio } = req.body;
+
+        // Busca pedido + e-mail do cliente + itens
+        const pedidoRes = await db.query(`
+            SELECT p.*, u.email as email_cliente, u.nome as nome_cliente
+            FROM pedidos p
+            LEFT JOIN usuarios u ON p.usuario_id = u.id
+            WHERE p.id = $1
+        `, [id]);
+
+        if (pedidoRes.rows.length === 0) {
+            return res.status(404).json({ error: "Pedido não encontrado." });
+        }
+
+        const pedido = pedidoRes.rows[0];
+
+        // Atualiza status e código de rastreio
+        await db.query(
+            "UPDATE pedidos SET status = 'enviado', codigo_rastreio = $1 WHERE id = $2",
+            [codigo_rastreio || null, id]
+        );
+
+        // Busca itens pra incluir no e-mail
+        const itensRes = await db.query(`
+            SELECT pi.quantidade, pi.preco_unitario, pr.nome
+            FROM pedido_itens pi
+            LEFT JOIN produtos pr ON pi.produto_id = pr.id
+            WHERE pi.pedido_id = $1
+        `, [id]);
+
+        // Envia e-mail pro cliente (não bloqueia a resposta se falhar)
+        enviarEmailEnvio({
+            nomeCliente: pedido.nome_cliente || pedido.cliente_nome || 'Cliente',
+            emailCliente: pedido.email_cliente,
+            pedidoId: id,
+            codigoRastreio: codigo_rastreio,
+            itens: itensRes.rows,
+            total: pedido.total,
+        }).catch(err => console.error('[EMAIL] Erro assíncrono:', err.message));
+
+        res.json({
+            message: `Pedido #${id} marcado como enviado!`,
+            codigo_rastreio: codigo_rastreio || null,
+            email_enviado: !!pedido.email_cliente,
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Erro ao atualizar envio do pedido." });
+    }
+});
+
+// ── Consultar status PIX de um pedido (Cliente) ──────────────────────────────
+router.get('/:id/pix-status', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await db.query(
+            'SELECT mp_payment_id, status FROM pedidos WHERE id = $1 AND usuario_id = $2',
+            [id, req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Pedido não encontrado." });
+        }
+
+        const pedido = result.rows[0];
+
+        if (!pedido.mp_payment_id) {
+            return res.json({ status: pedido.status, mp_status: null });
+        }
+
+        const mpStatus = await getPixPaymentStatus(pedido.mp_payment_id);
+
+        res.json({
+            pedido_status: pedido.status,
+            mp_status: mpStatus.status,
+            mp_status_detail: mpStatus.status_detail,
+        });
+
+    } catch (error) {
+        console.error("Erro ao consultar status PIX:", error.message);
+        res.status(500).json({ error: "Erro ao consultar status do pagamento." });
     }
 });
 

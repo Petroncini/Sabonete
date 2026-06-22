@@ -18,13 +18,13 @@ router.get('/', async (req, res) => {
 // Cadastrar novo produto (Apenas Admin)
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const { nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque } = req.body;
+        const { nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, categoria } = req.body;
 
         const newProduct = await db.query(
             `INSERT INTO produtos 
-            (nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque || 0]
+            (nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, categoria) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+            [nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque || 0, imagem_url, categoria]
         );
 
         res.status(201).json(newProduct.rows[0]);
@@ -38,7 +38,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque } = req.body;
+        const { nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, categoria } = req.body;
 
         const updatedProduct = await db.query(
             `UPDATE produtos SET 
@@ -49,9 +49,11 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
             comprimento_cm = COALESCE($5, comprimento_cm),
             largura_cm = COALESCE($6, largura_cm),
             altura_cm = COALESCE($7, altura_cm),
-            estoque = COALESCE($8, estoque)
-            WHERE id = $9 RETURNING *`,
-            [nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, id]
+            estoque = COALESCE($8, estoque),
+            imagem_url = COALESCE($9, imagem_url),
+            categoria = COALESCE($10, categoria)
+            WHERE id = $11 RETURNING *`,
+            [nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, categoria, id]
         );
 
         if (updatedProduct.rows.length === 0) {

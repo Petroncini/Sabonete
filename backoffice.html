@@ -69,7 +69,7 @@
           <h1 class="section-title" style="text-align: left; margin-bottom: 0;">Gerenciamento de Estoque</h1>
           <p class="section-subtitle" style="text-align: left;">Adicione, edite ou remova produtos do catálogo</p>
         </div>
-        <button class="btn-primary mt-4 md:mt-0" onclick="alert('Modal de cadastro de produto mockado!')">+ Adicionar Novo Produto</button>
+        <button class="btn-primary mt-4 md:mt-0" onclick="abrirModalProduto()">+ Adicionar Novo Produto</button>
       </div>
       
       <div class="admin-container mt-6 reveal reveal-delay-1">
@@ -112,7 +112,7 @@
       </div>
 
       <div class="admin-container reveal reveal-delay-3">
-        <table class="admin-table w-full whitespace-nowrap">
+        <table class="admin-table w-full">
           <thead>
             <tr>
               <th>Pedido</th>
@@ -127,12 +127,104 @@
             <!-- Renderizado via JS -->
           </tbody>
         </table>
-        
-        <div class="flex justify-center mt-6">
-           <button class="text-sm font-bold" style="color:var(--primary); text-decoration: underline;" onclick="alert('Ver todos os pedidos mockado')">Ver Todos os Pedidos</button>
-        </div>
       </div>
 
+    </div>
+
+    <!-- Modal Detalhes do Pedido -->
+    <div id="pedido-detalhe-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+        <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-xl font-bold" onclick="fecharDetalhePedido()">✕</button>
+        <h2 class="font-head text-2xl mb-1 text-heading font-bold" id="detalhe-titulo">Pedido #</h2>
+        <p class="text-sm text-gray-500 mb-4" id="detalhe-status-linha"></p>
+        <div id="detalhe-body"></div>
+        <div class="flex gap-3 mt-6">
+          <button id="detalhe-btn-pagar" class="btn-outline text-sm px-4 py-2 hidden" style="color:#10b981;border-color:#10b981;background:transparent" onclick="confirmarPagamentoDetalhe()">✅ Confirmar Pagamento</button>
+          <button id="detalhe-btn-enviar" class="btn-primary text-sm px-4 py-2 hidden" onclick="abrirModalEnvio()">🚀 Marcar como Enviado</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Marcar Enviado -->
+    <div id="envio-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-xl font-bold" onclick="fecharModalEnvio()">✕</button>
+        <h2 class="font-head text-2xl mb-2 text-heading font-bold">Marcar como Enviado</h2>
+        <p class="text-sm text-gray-500 mb-4">Informe o código de rastreio dos Correios (opcional).</p>
+        <input type="text" id="input-rastreio" placeholder="Ex: BR123456789BR" class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary outline-none mb-4" />
+        <p class="text-xs text-gray-400 mb-4">Se o e-mail do cliente estiver cadastrado, ele receberá uma notificação automática.</p>
+        <button class="w-full btn-primary py-3 justify-center" onclick="confirmarEnvio()">Confirmar Envio 🚀</button>
+      </div>
+    </div>
+
+    <!-- Modal de Produto (Adicionar/Editar) -->
+    <div id="admin-product-modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+        <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-xl font-bold" onclick="fecharModalProduto()">✕</button>
+        <h2 id="modal-title" class="font-head text-2xl mb-6 text-heading font-bold">Novo Produto</h2>
+        
+        <form id="admin-product-form" class="space-y-4">
+          <input type="hidden" id="product-id" />
+          
+          <div>
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Nome do Produto</label>
+            <input type="text" id="prod-nome" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Descrição</label>
+            <textarea id="prod-descricao" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none h-20 resize-none" required></textarea>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Preço (R$)</label>
+              <input type="number" id="prod-preco" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Estoque</label>
+              <input type="number" id="prod-estoque" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Categoria</label>
+              <select id="prod-categoria" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none">
+                <option value="corpo">Corpo</option>
+                <option value="rosto">Rosto</option>
+                <option value="kits">Kits</option>
+                <option value="especiais">Especiais</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Imagem URL</label>
+              <input type="text" id="prod-imagem-url" placeholder="ex: imagens/produtos/lavanda.png" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-4 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Peso (g)</label>
+              <input type="number" id="prod-peso" value="100" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Comprimento</label>
+              <input type="number" id="prod-comprimento" value="8" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Largura</label>
+              <input type="number" id="prod-largura" value="5" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Altura</label>
+              <input type="number" id="prod-altura" value="3" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+            </div>
+          </div>
+          
+          <button type="submit" class="w-full btn-primary mt-4 py-3 justify-center">Salvar Produto</button>
+        </form>
+      </div>
     </div>
   </main>
   
@@ -145,46 +237,83 @@
         window.location.href = 'login.html';
     }
 
+    let currentProdutos = [];
+
     async function loadAdminData() {
         try {
             // Fetch Produtos
-            const resProdutos = await fetch('http://localhost:3000/api/produtos');
+            const resProdutos = await fetch('/api/produtos');
             const produtos = await resProdutos.json();
             const tbodyProdutos = document.getElementById('produtos-tbody');
             
-            tbodyProdutos.innerHTML = produtos.map(p => `
+            currentProdutos = produtos;
+
+            tbodyProdutos.innerHTML = produtos.map((p, idx) => {
+                const imgPath = p.imagem_url || 'imagens/produtos/placeholder.png';
+                const cat = p.categoria || 'artesanal';
+                return `
                 <tr>
                   <td class="text-gray-500">#${p.id}</td>
+                  <td>
+                    <img src="${imgPath}" alt="${p.nome}" class="w-12 h-12 object-cover rounded-md" />
+                  </td>
                   <td class="font-bold" style="color:var(--heading)">${p.nome}</td>
+                  <td class="text-sm text-gray-600 capitalize">${cat}</td>
                   <td>R$ ${parseFloat(p.preco).toFixed(2).replace('.', ',')}</td>
                   <td><span class="${p.estoque > 5 ? 'text-green-600' : 'text-red-500'} font-semibold">${p.estoque}</span></td>
                   <td>
-                    <button class="btn-danger" onclick="apagarProduto(${p.id})">Remover</button>
+                    <div class="flex gap-2">
+                      <button class="px-2 py-1 bg-primary text-white rounded text-xs hover:bg-secondary transition" onclick="abrirModalProdutoAtIndex(${idx})">Editar</button>
+                      <button class="btn-danger" onclick="apagarProduto(${p.id})">Remover</button>
+                    </div>
                   </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
+
+            const paginationText = document.querySelector('.admin-container span.text-gray-500');
+            if (paginationText) {
+                paginationText.textContent = `Mostrando 1-${produtos.length} de ${produtos.length} produtos`;
+            }
 
             // Fetch Pedidos
-            const resPedidos = await fetch('http://localhost:3000/api/pedidos', {
+            const resPedidos = await fetch('/api/pedidos', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const pedidos = await resPedidos.json();
             const tbodyPedidos = document.getElementById('pedidos-tbody');
 
-            tbodyPedidos.innerHTML = pedidos.map(ped => `
-                <tr>
+            tbodyPedidos.innerHTML = pedidos.map(ped => {
+                const statusColors = {
+                    pendente:  'bg-yellow-100 text-yellow-800',
+                    pago:      'bg-green-100 text-green-800',
+                    enviado:   'bg-blue-100 text-blue-800',
+                    cancelado: 'bg-red-100 text-red-800',
+                };
+                const badgeClass = statusColors[ped.status] || 'bg-gray-100 text-gray-800';
+                return `
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="verDetalhePedido(${ped.id})">
                   <td class="font-bold text-gray-700">#${ped.id}</td>
-                  <td>${ped.cliente_nome}</td>
+                  <td>
+                    <div class="font-medium">${ped.cliente_nome}</div>
+                    <div class="text-xs text-gray-400">${ped.email_cliente || ''}</div>
+                  </td>
                   <td>${new Date(ped.criado_em).toLocaleDateString('pt-BR')}</td>
                   <td>
-                    <span class="px-2 py-1 rounded text-xs font-semibold ${ped.status === 'pago' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${ped.status.toUpperCase()}</span>
+                    <span class="px-2 py-1 rounded text-xs font-semibold ${badgeClass}">${ped.status.toUpperCase()}</span>
+                    ${ped.codigo_rastreio ? `<div class="text-xs text-blue-600 mt-1">📦 ${ped.codigo_rastreio}</div>` : ''}
                   </td>
-                  <td>R$ ${parseFloat(ped.total).toFixed(2).replace('.', ',')}</td>
-                  <td>
-                    ${ped.status === 'pendente' ? `<button class="btn-outline text-xs px-2 py-1" style="background:transparent; color:#10b981; border-color:#10b981" onclick="confirmarPagamento(${ped.id})">Confirmar Pagamento</button>` : ''}
+                  <td class="font-semibold">R$ ${parseFloat(ped.total).toFixed(2).replace('.', ',')}</td>
+                  <td onclick="event.stopPropagation()">
+                    <div class="flex gap-2 flex-wrap">
+                      ${ped.status === 'pendente' ? `<button class="px-2 py-1 text-xs rounded border border-green-500 text-green-600 hover:bg-green-50" onclick="event.stopPropagation();confirmarPagamento(${ped.id})">✅ Pago</button>` : ''}
+                      ${ped.status === 'pago' ? `<button class="px-2 py-1 text-xs rounded bg-blue-500 text-white hover:bg-blue-600" onclick="event.stopPropagation();prepararEnvio(${ped.id})">🚀 Enviar</button>` : ''}
+                      ${ped.status === 'enviado' ? `<span class="text-xs text-blue-500">✓ Enviado</span>` : ''}
+                    </div>
                   </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
 
         } catch (err) {
             console.error(err);
@@ -195,7 +324,7 @@
     async function apagarProduto(id) {
         if (!confirm('Deseja realmente apagar este produto?')) return;
         try {
-            await fetch(`http://localhost:3000/api/produtos/${id}`, {
+            await fetch(`/api/produtos/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -206,17 +335,266 @@
     }
 
     async function confirmarPagamento(id) {
-        if (!confirm('Deseja confirmar o pagamento deste pedido?')) return;
+        if (!confirm('Confirmar o pagamento deste pedido?')) return;
         try {
-            await fetch(`http://localhost:3000/api/pedidos/${id}/pagamento`, {
+            await fetch(`/api/pedidos/${id}/pagamento`, {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             loadAdminData();
+        } catch (err) { alert('Erro ao confirmar pagamento.'); }
+    }
+
+    // ── Detalhes do pedido ─────────────────────────────────────────────────────
+    let pedidoAtualId = null;
+    let pedidoAtualStatus = null;
+
+    async function verDetalhePedido(id) {
+        pedidoAtualId = id;
+        const overlay = document.getElementById('pedido-detalhe-overlay');
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+        document.getElementById('detalhe-titulo').textContent = `Pedido #${id}`;
+        document.getElementById('detalhe-body').innerHTML = '<p class="text-gray-400 text-sm">Carregando...</p>';
+
+        try {
+            const res = await fetch(`/api/pedidos/${id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const ped = await res.json();
+            pedidoAtualStatus = ped.status;
+
+            const statusColors = { pendente:'bg-yellow-100 text-yellow-800', pago:'bg-green-100 text-green-800', enviado:'bg-blue-100 text-blue-800', cancelado:'bg-red-100 text-red-800' };
+            const badge = statusColors[ped.status] || 'bg-gray-100 text-gray-800';
+            document.getElementById('detalhe-status-linha').innerHTML =
+                `<span class="px-2 py-1 rounded text-xs font-semibold ${badge}">${ped.status.toUpperCase()}</span>
+                 <span class="ml-2">${new Date(ped.criado_em).toLocaleString('pt-BR')}</span>`;
+
+            const itensHtml = (ped.itens || []).map(item => `
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                    <span>${item.nome || 'Produto'} <span class="text-gray-400">x${item.quantidade}</span></span>
+                    <span class="font-medium">R$ ${(parseFloat(item.preco_unitario) * item.quantidade).toFixed(2).replace('.', ',')}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('detalhe-body').innerHTML = `
+                <div class="mb-4">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Cliente</p>
+                    <p class="font-medium">${ped.cliente_nome}</p>
+                    <p class="text-sm text-gray-500">${ped.email_cliente || 'E-mail não cadastrado'}</p>
+                </div>
+                <div class="mb-4">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Endereço de Entrega</p>
+                    <p class="text-sm">${ped.cliente_endereco}</p>
+                </div>
+                ${ped.codigo_rastreio ? `
+                <div class="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <p class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">📦 Código de Rastreio</p>
+                    <p class="font-bold text-blue-700 text-lg">${ped.codigo_rastreio}</p>
+                </div>` : ''}
+                <div class="mb-4">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Itens do Pedido</p>
+                    ${itensHtml}
+                    <div class="flex justify-between pt-3 font-bold">
+                        <span>Total</span>
+                        <span style="color:var(--primary)">R$ ${parseFloat(ped.total).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </div>
+            `;
+
+            // Mostra botões conforme status
+            document.getElementById('detalhe-btn-pagar').classList.toggle('hidden', ped.status !== 'pendente');
+            document.getElementById('detalhe-btn-enviar').classList.toggle('hidden', ped.status !== 'pago');
+
         } catch (err) {
-            alert('Erro ao confirmar pagamento.');
+            document.getElementById('detalhe-body').innerHTML = '<p class="text-red-500">Erro ao carregar detalhes.</p>';
         }
     }
+
+    function fecharDetalhePedido() {
+        document.getElementById('pedido-detalhe-overlay').classList.add('hidden');
+        document.getElementById('pedido-detalhe-overlay').classList.remove('flex');
+    }
+
+    async function confirmarPagamentoDetalhe() {
+        if (!confirm('Confirmar o pagamento deste pedido?')) return;
+        await fetch(`/api/pedidos/${pedidoAtualId}/pagamento`, {
+            method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        fecharDetalhePedido();
+        loadAdminData();
+    }
+
+    // ── Envio ────────────────────────────────────────────────────────────────────
+    function prepararEnvio(id) {
+        pedidoAtualId = id;
+        abrirModalEnvio();
+    }
+
+    function abrirModalEnvio() {
+        document.getElementById('input-rastreio').value = '';
+        document.getElementById('envio-overlay').classList.remove('hidden');
+        document.getElementById('envio-overlay').classList.add('flex');
+    }
+
+    function fecharModalEnvio() {
+        document.getElementById('envio-overlay').classList.add('hidden');
+        document.getElementById('envio-overlay').classList.remove('flex');
+    }
+
+    async function confirmarEnvio() {
+        const codigoRastreio = document.getElementById('input-rastreio').value.trim();
+        const btn = document.querySelector('#envio-overlay button:last-child');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+        try {
+            const res = await fetch(`/api/pedidos/${pedidoAtualId}/envio`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ codigo_rastreio: codigoRastreio })
+            });
+            const data = await res.json();
+            fecharModalEnvio();
+            fecharDetalhePedido();
+            loadAdminData();
+            alert(data.email_enviado ? '✅ Pedido marcado como enviado! E-mail enviado ao cliente.' : '✅ Pedido marcado como enviado!');
+        } catch (err) {
+            alert('Erro ao marcar envio.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Confirmar Envio 🚀';
+        }
+    }
+
+    // Scroll Reveal (Intersection Observer)
+    const observer = new IntersectionObserver(
+        (entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        },
+        { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    document.querySelectorAll('.reveal').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+            el.classList.add('visible');
+        } else {
+            observer.observe(el);
+        }
+    });
+
+    // Mobile Navbar Hamburger Toggle
+    const hamburger = document.getElementById('hamburger');
+    const mobileMenu = document.getElementById('mobile-menu');
+    hamburger?.addEventListener('click', () => {
+        mobileMenu.classList.toggle('open');
+        const isOpen = mobileMenu.classList.contains('open');
+        hamburger.setAttribute('aria-expanded', isOpen);
+        hamburger.innerHTML = isOpen
+            ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>'
+            : '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>';
+    });
+
+    function abrirModalProdutoAtIndex(idx) {
+        abrirModalProduto(currentProdutos[idx]);
+    }
+
+    function abrirModalProduto(produto = null) {
+        const overlay = document.getElementById('admin-product-modal-overlay');
+        const form = document.getElementById('admin-product-form');
+        const title = document.getElementById('modal-title');
+        
+        form.reset();
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+        
+        if (produto) {
+            title.textContent = 'Editar Produto';
+            document.getElementById('product-id').value = produto.id;
+            document.getElementById('prod-nome').value = produto.nome;
+            document.getElementById('prod-descricao').value = produto.descricao;
+            document.getElementById('prod-preco').value = produto.preco;
+            document.getElementById('prod-estoque').value = produto.estoque;
+            document.getElementById('prod-categoria').value = produto.categoria || 'corpo';
+            document.getElementById('prod-imagem-url').value = produto.imagem_url || '';
+            document.getElementById('prod-peso').value = produto.peso_gramas;
+            document.getElementById('prod-comprimento').value = produto.comprimento_cm;
+            document.getElementById('prod-largura').value = produto.largura_cm;
+            document.getElementById('prod-altura').value = produto.altura_cm;
+        } else {
+            title.textContent = 'Adicionar Novo Produto';
+            document.getElementById('product-id').value = '';
+            document.getElementById('prod-peso').value = 100;
+            document.getElementById('prod-comprimento').value = 8;
+            document.getElementById('prod-largura').value = 5;
+            document.getElementById('prod-altura').value = 3;
+        }
+    }
+
+    function fecharModalProduto() {
+        const overlay = document.getElementById('admin-product-modal-overlay');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }
+
+    document.getElementById('admin-product-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const id = document.getElementById('product-id').value;
+        const payload = {
+            nome: document.getElementById('prod-nome').value,
+            descricao: document.getElementById('prod-descricao').value,
+            preco: parseFloat(document.getElementById('prod-preco').value),
+            estoque: parseInt(document.getElementById('prod-estoque').value),
+            categoria: document.getElementById('prod-categoria').value,
+            imagem_url: document.getElementById('prod-imagem-url').value || 'imagens/produtos/placeholder.png',
+            peso_gramas: parseInt(document.getElementById('prod-peso').value),
+            comprimento_cm: parseInt(document.getElementById('prod-comprimento').value),
+            largura_cm: parseInt(document.getElementById('prod-largura').value),
+            altura_cm: parseInt(document.getElementById('prod-altura').value)
+        };
+
+        try {
+            let res;
+            if (id) {
+                // Editar produto existente
+                res = await fetch(`/api/produtos/${id}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` 
+                    },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // Cadastrar novo produto
+                res = await fetch('/api/produtos', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` 
+                    },
+                    body: JSON.stringify(payload)
+                });
+            }
+
+            if (res.ok) {
+                fecharModalProduto();
+                loadAdminData();
+            } else {
+                const errData = await res.json();
+                alert(`Erro: ${errData.error || 'Não foi possível salvar o produto.'}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao conectar com o servidor.');
+        }
+    });
 
     loadAdminData();
   </script>
