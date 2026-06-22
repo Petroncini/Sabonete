@@ -141,6 +141,7 @@
         <div class="flex gap-3 mt-6">
           <button id="detalhe-btn-pagar" class="btn-outline text-sm px-4 py-2 hidden" style="color:#10b981;border-color:#10b981;background:transparent" onclick="confirmarPagamentoDetalhe()">✅ Confirmar Pagamento</button>
           <button id="detalhe-btn-enviar" class="btn-primary text-sm px-4 py-2 hidden" onclick="abrirModalEnvio()">🚀 Marcar como Enviado</button>
+          <button id="detalhe-btn-reembolsar" class="btn-outline text-sm px-4 py-2 hidden" style="color:#ef4444;border-color:#ef4444;background:transparent" onclick="reembolsarPedidoDetalhe()">↩️ Reembolsar e Cancelar</button>
         </div>
       </div>
     </div>
@@ -453,6 +454,7 @@
             // Mostra botões conforme status
             document.getElementById('detalhe-btn-pagar').classList.toggle('hidden', ped.status !== 'pendente');
             document.getElementById('detalhe-btn-enviar').classList.toggle('hidden', ped.status !== 'pago');
+            document.getElementById('detalhe-btn-reembolsar').classList.toggle('hidden', ped.status !== 'pago');
 
         } catch (err) {
             document.getElementById('detalhe-body').innerHTML = '<p class="text-red-500">Erro ao carregar detalhes.</p>';
@@ -471,6 +473,36 @@
         });
         fecharDetalhePedido();
         loadAdminData();
+    }
+
+    async function reembolsarPedidoDetalhe() {
+        if (!confirm('Isso vai devolver o dinheiro pro cliente via Mercado Pago e cancelar o pedido. Essa ação não pode ser desfeita. Continuar?')) return;
+
+        const btn = document.getElementById('detalhe-btn-reembolsar');
+        btn.disabled = true;
+        btn.textContent = 'Processando reembolso…';
+
+        try {
+            const res = await fetch(`/api/pedidos/${pedidoAtualId}/reembolsar`, {
+                method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert('Erro ao reembolsar: ' + (data.error || 'tente novamente') + (data.detalhe ? `\n\n${data.detalhe}` : ''));
+                btn.disabled = false;
+                btn.textContent = '↩️ Reembolsar e Cancelar';
+                return;
+            }
+
+            alert('Pedido reembolsado e cancelado com sucesso.');
+            fecharDetalhePedido();
+            loadAdminData();
+        } catch (err) {
+            alert('Erro ao conectar com o servidor.');
+            btn.disabled = false;
+            btn.textContent = '↩️ Reembolsar e Cancelar';
+        }
     }
 
     // ── Envio ────────────────────────────────────────────────────────────────────

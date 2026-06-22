@@ -106,7 +106,7 @@
                 <p class="text-sm text-gray-500">Total da compra com frete</p>
                 <p class="text-2xl font-bold font-head" style="color:var(--primary)" id="total-checkout">R$ 0,00</p>
              </div>
-             <button type="submit" class="btn-primary" style="padding-left: 2.5rem; padding-right: 2.5rem; font-size: 1.1rem;">Concluir Pedido »</button>
+             <button type="submit" id="btn-concluir-pedido" class="btn-primary" style="padding-left: 2.5rem; padding-right: 2.5rem; font-size: 1.1rem;" disabled title="Informe o CEP e escolha o frete primeiro">Concluir Pedido »</button>
           </div>
           
         </form>
@@ -148,8 +148,19 @@
     const cepInput = document.getElementById('cep');
     cepInput.addEventListener('blur', calcularFrete);
 
+    function atualizarBotaoConcluir() {
+        document.getElementById('btn-concluir-pedido').disabled = !freteEscolhido;
+    }
+
     async function calcularFrete() {
         const cep = cepInput.value.replace(/\D/g, '');
+
+        // Qualquer mudança no CEP invalida a cotação anterior — evita finalizar
+        // o pedido com um frete calculado pra um endereço diferente do atual.
+        freteEscolhido = null;
+        atualizarBotaoConcluir();
+        atualizarTotal();
+
         if (cep.length !== 8) return;
 
         const areaFrete = document.getElementById('frete-opcoes');
@@ -192,12 +203,14 @@
             // Seleciona a primeira opção por padrão
             freteEscolhido = data.opcoes_frete[0];
             atualizarTotal();
+            atualizarBotaoConcluir();
 
             // Atualiza seleção ao trocar
             areaFrete.querySelectorAll('input[name="frete"]').forEach((radio, i) => {
                 radio.addEventListener('change', () => {
                     freteEscolhido = data.opcoes_frete[i];
                     atualizarTotal();
+                    atualizarBotaoConcluir();
                 });
             });
 

@@ -1,7 +1,7 @@
 // Utilitário de PIX via MercadoPago SDK
 // Substitui o gerador local de BR Code pela API oficial do Mercado Pago
 
-const { MercadoPagoConfig, Payment } = require('mercadopago');
+const { MercadoPagoConfig, Payment, PaymentRefund } = require('mercadopago');
 
 // Inicializa o cliente com o Access Token de ambiente
 const getMercadoPagoClient = () => {
@@ -83,4 +83,20 @@ async function getPixPaymentStatus(paymentId) {
     };
 }
 
-module.exports = { createPixPayment, getPixPaymentStatus };
+/**
+ * Reembolsa (total) um pagamento já aprovado via Mercado Pago.
+ *
+ * @param {number|string} paymentId
+ * @returns {Promise<{ id: number, status: string }>}
+ */
+async function refundPayment(paymentId) {
+    const client = getMercadoPagoClient();
+    const refundApi = new PaymentRefund(client);
+    const result = await refundApi.total({ payment_id: paymentId });
+    return {
+        id: result.id,
+        status: result.status,
+    };
+}
+
+module.exports = { createPixPayment, getPixPaymentStatus, refundPayment };

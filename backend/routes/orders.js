@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
-const { createPixPayment, getPixPaymentStatus } = require('../utils/pix');
+const { createPixPayment, getPixPaymentStatus, refundPayment } = require('../utils/pix');
 const { enviarEmailEnvio } = require('../utils/email');
 const { calcularOpcoesFrete } = require('./shipping');
 
@@ -264,6 +264,115 @@ router.patch('/:id/envio', authenticateToken, requireAdmin, async (req, res) => 
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Erro ao atualizar envio do pedido." });
+    }
+});
+
+// ── Cancelar Pedido Próprio (Cliente) — só permitido antes do pagamento ──────
+// Sem pagamento aprovado ainda, cancelar é só devolver o estoque, sem reembolso
+// envolvido. Depois de pago, o cliente precisa falar com a loja (ver rota de
+// reembolso abaixo, que é de uso exclusivo da administradora).
+router.patch('/:id/cancelar', authenticateToken, async (req, res) => {
+    const client = await db.connect();
+    try {
+        const { id } = req.params;
+
+        await client.query('BEGIN');
+
+        const pedidoRes = await client.query(
+            'SELECT * FROM pedidos WHERE id = $1 AND usuario_id = $2 FOR UPDATE',
+            [id, req.user.id]
+        );
+
+        if (pedidoRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "Pedido não encontrado." });
+        }
+
+        const pedido = pedidoRes.rows[0];
+
+        if (pedido.status !== 'pendente') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                error: pedido.status === 'pago'
+                    ? "Esse pedido já foi pago. Entre em contato com a loja para solicitar reembolso."
+                    : "Esse pedido não pode mais ser cancelado."
+            });
+        }
+
+        await client.query("UPDATE pedidos SET status = 'cancelado' WHERE id = $1", [id]);
+        await client.query(`
+            UPDATE produtos pr
+            SET estoque = estoque + pi.quantidade
+            FROM pedido_itens pi
+            WHERE pi.pedido_id = $1 AND pi.produto_id = pr.id
+        `, [id]);
+
+        await client.query('COMMIT');
+        res.json({ message: "Pedido cancelado." });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error("Erro ao cancelar pedido:", error.message);
+        res.status(500).json({ error: "Erro ao cancelar pedido." });
+    } finally {
+        client.release();
+    }
+});
+
+// ── Cancelar e Reembolsar Pedido Pago (Admin) ─────────────────────────────────
+// Emite reembolso total via Mercado Pago, devolve o estoque e marca o pedido
+// como cancelado. Só funciona pra pedidos com status 'pago' e mp_payment_id.
+router.patch('/:id/reembolsar', authenticateToken, requireAdmin, async (req, res) => {
+    const client = await db.connect();
+    try {
+        const { id } = req.params;
+
+        const pedidoRes = await client.query('SELECT * FROM pedidos WHERE id = $1', [id]);
+        if (pedidoRes.rows.length === 0) {
+            return res.status(404).json({ error: "Pedido não encontrado." });
+        }
+
+        const pedido = pedidoRes.rows[0];
+
+        if (pedido.status !== 'pago') {
+            return res.status(400).json({ error: "Só é possível reembolsar pedidos com status 'pago'." });
+        }
+        if (!pedido.mp_payment_id) {
+            return res.status(400).json({ error: "Esse pedido não tem um pagamento do Mercado Pago associado." });
+        }
+
+        // Chama a API do Mercado Pago ANTES de tocar no banco — se o reembolso
+        // falhar lá (ex: prazo de reembolso expirado), não queremos ter
+        // devolvido o estoque e cancelado o pedido só pra descobrir depois
+        // que o dinheiro não voltou pro cliente.
+        try {
+            await refundPayment(pedido.mp_payment_id);
+        } catch (mpError) {
+            console.error('[REEMBOLSO] Erro na API do Mercado Pago:', mpError.message);
+            return res.status(502).json({
+                error: "Não foi possível processar o reembolso no Mercado Pago. Verifique o pagamento diretamente no painel do Mercado Pago.",
+                detalhe: mpError.message,
+            });
+        }
+
+        await client.query('BEGIN');
+        await client.query("UPDATE pedidos SET status = 'cancelado' WHERE id = $1", [id]);
+        await client.query(`
+            UPDATE produtos pr
+            SET estoque = estoque + pi.quantidade
+            FROM pedido_itens pi
+            WHERE pi.pedido_id = $1 AND pi.produto_id = pr.id
+        `, [id]);
+        await client.query('COMMIT');
+
+        res.json({ message: "Pedido reembolsado e cancelado com sucesso." });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error("Erro ao reembolsar pedido:", error.message);
+        res.status(500).json({ error: "Erro ao reembolsar pedido." });
+    } finally {
+        client.release();
     }
 });
 
