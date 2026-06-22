@@ -109,6 +109,7 @@
           <h2 class="section-title text-2xl" style="text-align: left; margin-bottom: 0;">Pedidos Recentes</h2>
           <p class="section-subtitle" style="text-align: left;">Acompanhe e gerencie os pedidos da loja</p>
         </div>
+        <button class="btn-primary mt-4 md:mt-0" onclick="abrirModalVendaManual()">+ Registrar Venda Manual</button>
       </div>
 
       <div class="admin-container reveal reveal-delay-3">
@@ -246,6 +247,63 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de Venda Manual (presencial, WhatsApp, Instagram, etc.) -->
+    <div id="venda-manual-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+        <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-xl font-bold" onclick="fecharModalVendaManual()">✕</button>
+        <h2 class="font-head text-2xl mb-1 text-heading font-bold">Registrar Venda Manual</h2>
+        <p class="text-sm text-gray-500 mb-6">Pra vendas feitas fora do site — presencial, WhatsApp, Instagram, etc. Já entra marcada como paga.</p>
+
+        <form id="venda-manual-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Nome do Cliente</label>
+            <input type="text" id="venda-cliente-nome" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Itens da Venda</label>
+            <div class="flex gap-2 mb-2">
+              <select id="venda-item-produto" class="flex-1 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none">
+                <!-- Renderizado via JS -->
+              </select>
+              <input type="number" id="venda-item-qtd" value="1" min="1" class="w-20 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+              <button type="button" onclick="adicionarItemVenda()" class="btn-outline px-3">+ Adicionar</button>
+            </div>
+            <div id="venda-itens-lista" class="space-y-1 mb-2">
+              <!-- Renderizado via JS -->
+            </div>
+            <p class="text-sm font-bold text-right" style="color:var(--primary)">Subtotal: <span id="venda-subtotal">R$ 0,00</span></p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Frete (R$, se houver)</label>
+            <input type="number" id="venda-frete" step="0.01" value="0" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Origem da Venda</label>
+            <select id="venda-origem" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" onchange="document.getElementById('venda-origem-outro').classList.toggle('hidden', this.value !== 'outro')">
+              <option value="instagram">Instagram</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="presencial">Presencial / Loja física</option>
+              <option value="indicacao">Indicação</option>
+              <option value="pix_manual">Pix (fora do site)</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="outro">Outro (especificar)</option>
+            </select>
+            <input type="text" id="venda-origem-outro" placeholder="Especifique a origem" class="hidden mt-2 w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Observações (opcional)</label>
+            <textarea id="venda-observacoes" placeholder='Ex: "Vendido pra uma mãe da escola do meu filho"' class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none h-20 resize-none"></textarea>
+          </div>
+
+          <button type="submit" class="w-full btn-primary mt-2 py-3 justify-center">Registrar Venda</button>
+        </form>
+      </div>
+    </div>
   </main>
   
   <script>
@@ -347,7 +405,7 @@
                 <tr class="hover:bg-gray-50 cursor-pointer" onclick="verDetalhePedido(${ped.id})">
                   <td class="font-bold text-gray-700">#${ped.id}</td>
                   <td>
-                    <div class="font-medium">${ped.cliente_nome}</div>
+                    <div class="font-medium">${ped.cliente_nome} ${ped.registrado_manualmente ? '<span class="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-semibold ml-1">MANUAL</span>' : ''}</div>
                     <div class="text-xs text-gray-400">${ped.email_cliente || ''}</div>
                   </td>
                   <td>${new Date(ped.criado_em).toLocaleDateString('pt-BR')}</td>
@@ -442,10 +500,17 @@
                     <p class="font-medium">${ped.cliente_nome}</p>
                     <p class="text-sm text-gray-500">📧 ${ped.email_cliente || 'E-mail não cadastrado'}</p>
                 </div>
+                ${ped.cliente_endereco ? `
                 <div class="mb-4">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Endereço de Entrega</p>
                     <p class="text-sm">${ped.cliente_endereco}</p>
-                </div>
+                </div>` : ''}
+                ${ped.registrado_manualmente ? `
+                <div class="mb-4 p-3 bg-purple-50 rounded-lg">
+                    <p class="text-xs font-bold text-purple-600 uppercase tracking-wider mb-1">✋ Venda Registrada Manualmente</p>
+                    ${ped.origem_venda ? `<p class="text-sm"><strong>Origem:</strong> ${ped.origem_venda}</p>` : ''}
+                    ${ped.observacoes ? `<p class="text-sm mt-1"><strong>Observações:</strong> ${ped.observacoes}</p>` : ''}
+                </div>` : `
                 <div class="mb-4 grid grid-cols-2 gap-3 text-sm">
                     <div class="p-3 bg-gray-50 rounded-lg">
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Referência do Pedido</p>
@@ -455,7 +520,7 @@
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">ID Pagamento (MercadoPago)</p>
                         <p class="font-mono">${ped.mp_payment_id || '—'}</p>
                     </div>
-                </div>
+                </div>`}
                 ${ped.caixa_sugerida ? `
                 <div class="mb-4 p-3 bg-amber-50 rounded-lg">
                     <p class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">📦 Caixa Sugerida (SuperFrete)</p>
@@ -487,7 +552,7 @@
             // Mostra botões conforme status
             document.getElementById('detalhe-btn-pagar').classList.toggle('hidden', ped.status !== 'pendente');
             document.getElementById('detalhe-btn-enviar').classList.toggle('hidden', ped.status !== 'pago');
-            document.getElementById('detalhe-btn-reembolsar').classList.toggle('hidden', ped.status !== 'pago');
+            document.getElementById('detalhe-btn-reembolsar').classList.toggle('hidden', ped.status !== 'pago' || ped.registrado_manualmente);
 
         } catch (err) {
             document.getElementById('detalhe-body').innerHTML = '<p class="text-red-500">Erro ao carregar detalhes.</p>';
@@ -630,6 +695,112 @@
             </label>
         `).join('');
     }
+
+    // ── Venda Manual ─────────────────────────────────────────────────────────────
+    let itensVendaManual = [];
+
+    function abrirModalVendaManual() {
+        itensVendaManual = [];
+
+        const select = document.getElementById('venda-item-produto');
+        select.innerHTML = currentProdutos.map(p => `<option value="${p.id}">${p.nome} — R$ ${parseFloat(p.preco).toFixed(2).replace('.', ',')} (estoque: ${p.estoque})</option>`).join('');
+
+        document.getElementById('venda-manual-form').reset();
+        document.getElementById('venda-origem-outro').classList.add('hidden');
+        renderItensVendaManual();
+
+        const overlay = document.getElementById('venda-manual-overlay');
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+    }
+
+    function fecharModalVendaManual() {
+        const overlay = document.getElementById('venda-manual-overlay');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }
+
+    function adicionarItemVenda() {
+        const select = document.getElementById('venda-item-produto');
+        const produtoId = parseInt(select.value);
+        const qtd = parseInt(document.getElementById('venda-item-qtd').value) || 1;
+        const produto = currentProdutos.find(p => p.id === produtoId);
+        if (!produto) return;
+
+        const existente = itensVendaManual.find(i => i.produto_id === produtoId);
+        if (existente) {
+            existente.quantidade += qtd;
+        } else {
+            itensVendaManual.push({ produto_id: produtoId, nome: produto.nome, preco: parseFloat(produto.preco), quantidade: qtd });
+        }
+        renderItensVendaManual();
+    }
+
+    function removerItemVenda(produtoId) {
+        itensVendaManual = itensVendaManual.filter(i => i.produto_id !== produtoId);
+        renderItensVendaManual();
+    }
+
+    function renderItensVendaManual() {
+        const lista = document.getElementById('venda-itens-lista');
+        if (itensVendaManual.length === 0) {
+            lista.innerHTML = '<p class="text-sm text-gray-400">Nenhum item adicionado ainda.</p>';
+        } else {
+            lista.innerHTML = itensVendaManual.map(i => `
+                <div class="flex justify-between items-center text-sm p-2 bg-gray-50 rounded">
+                    <span>${i.nome} x${i.quantidade}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">R$ ${(i.preco * i.quantidade).toFixed(2).replace('.', ',')}</span>
+                        <button type="button" onclick="removerItemVenda(${i.produto_id})" class="text-red-500 hover:underline text-xs">Remover</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        const subtotal = itensVendaManual.reduce((sum, i) => sum + i.preco * i.quantidade, 0);
+        document.getElementById('venda-subtotal').textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+    }
+
+    document.getElementById('venda-manual-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (itensVendaManual.length === 0) {
+            alert('Adicione pelo menos um item à venda.');
+            return;
+        }
+
+        const origemSelect = document.getElementById('venda-origem').value;
+        const origemVenda = origemSelect === 'outro'
+            ? document.getElementById('venda-origem-outro').value.trim()
+            : origemSelect;
+
+        const payload = {
+            cliente_nome: document.getElementById('venda-cliente-nome').value,
+            itens: itensVendaManual.map(i => ({ produto_id: i.produto_id, quantidade: i.quantidade })),
+            frete: parseFloat(document.getElementById('venda-frete').value) || 0,
+            origem_venda: origemVenda || null,
+            observacoes: document.getElementById('venda-observacoes').value || null,
+        };
+
+        try {
+            const res = await fetch('/api/pedidos/manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert('Erro: ' + (data.error || 'tente novamente.'));
+                return;
+            }
+
+            fecharModalVendaManual();
+            loadAdminData();
+        } catch (err) {
+            alert('Erro ao conectar com o servidor.');
+        }
+    });
 
     function abrirModalTags() {
         renderTagsLista();

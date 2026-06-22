@@ -189,6 +189,87 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
+// ── Registrar Venda Manual (Admin) — presencial, WhatsApp, Instagram, etc. ───
+// Loja já recebeu o pagamento (dinheiro, pix direto, etc.) fora do site, então
+// o pedido entra direto como 'pago', sem gerar cobrança no Mercado Pago.
+router.post('/manual', authenticateToken, requireAdmin, async (req, res) => {
+    const client = await db.connect();
+    try {
+        const { cliente_nome, itens, frete, origem_venda, observacoes, endereco_entrega } = req.body;
+
+        if (!cliente_nome || !cliente_nome.trim()) {
+            return res.status(400).json({ error: "Nome do cliente é obrigatório." });
+        }
+        if (!itens || itens.length === 0) {
+            return res.status(400).json({ error: "Adicione pelo menos um item à venda." });
+        }
+
+        await client.query('BEGIN');
+
+        let totalProdutos = 0;
+        const itensProcessados = [];
+
+        for (const item of itens) {
+            const resProduto = await client.query(
+                'SELECT nome, preco, estoque FROM produtos WHERE id = $1 FOR UPDATE',
+                [item.produto_id]
+            );
+
+            if (resProduto.rows.length === 0) {
+                throw new Error(`Produto ID ${item.produto_id} não encontrado.`);
+            }
+
+            const produtoDb = resProduto.rows[0];
+
+            if (produtoDb.estoque < item.quantidade) {
+                throw new Error(`Estoque insuficiente para "${produtoDb.nome}".`);
+            }
+
+            await client.query(
+                'UPDATE produtos SET estoque = estoque - $1 WHERE id = $2',
+                [item.quantidade, item.produto_id]
+            );
+
+            totalProdutos += produtoDb.preco * item.quantidade;
+            itensProcessados.push({
+                produto_id: item.produto_id,
+                quantidade: item.quantidade,
+                preco_unitario: produtoDb.preco,
+            });
+        }
+
+        const valorFrete = parseFloat(frete) || 0;
+        const totalGeral = totalProdutos + valorFrete;
+
+        const resPedido = await client.query(
+            `INSERT INTO pedidos
+             (usuario_id, cliente_nome, cliente_endereco, total, frete, status, origem_venda, observacoes, registrado_manualmente)
+             VALUES (NULL, $1, $2, $3, $4, 'pago', $5, $6, true) RETURNING id`,
+            [cliente_nome.trim(), endereco_entrega || null, totalGeral, valorFrete, origem_venda || null, observacoes || null]
+        );
+
+        const pedidoId = resPedido.rows[0].id;
+
+        for (const item of itensProcessados) {
+            await client.query(
+                `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario)
+                 VALUES ($1, $2, $3, $4)`,
+                [pedidoId, item.produto_id, item.quantidade, item.preco_unitario]
+            );
+        }
+
+        await client.query('COMMIT');
+        res.status(201).json({ message: "Venda registrada com sucesso!", pedido_id: pedidoId, total: totalGeral });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error("Erro ao registrar venda manual:", error.message);
+        res.status(400).json({ error: error.message || "Erro ao registrar venda." });
+    } finally {
+        client.release();
+    }
+});
+
 // ── Confirmar Pagamento (Admin) ───────────────────────────────────────────────
 router.patch('/:id/pagamento', authenticateToken, requireAdmin, async (req, res) => {
     try {
