@@ -3,6 +3,7 @@ const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
 const { createPixPayment, getPixPaymentStatus } = require('../utils/pix');
 const { enviarEmailEnvio } = require('../utils/email');
+const { calcularOpcoesFrete } = require('./shipping');
 
 const router = express.Router();
 
@@ -74,11 +75,25 @@ router.post('/', authenticateToken, async (req, res) => {
     const client = await db.connect();
 
     try {
-        const { carrinho, endereco_entrega, valor_frete, email_pagador } = req.body;
+        const { carrinho, endereco_entrega, cep_destino, frete_id, email_pagador } = req.body;
 
         if (!carrinho || carrinho.length === 0) {
             return res.status(400).json({ error: "Carrinho vazio." });
         }
+        if (!cep_destino || frete_id === undefined || frete_id === null) {
+            return res.status(400).json({ error: "CEP de destino e opção de frete são obrigatórios." });
+        }
+
+        // Recalcula o frete no servidor — nunca confiar no preço enviado pelo cliente.
+        const carrinhoFrete = carrinho.map(item => ({ produto_id: item.produto_id, quantidade: item.quantidade }));
+        const cotacaoFrete = await calcularOpcoesFrete(carrinhoFrete, cep_destino);
+        const opcaoFrete = cotacaoFrete.opcoes_frete.find(op => String(op.id) === String(frete_id));
+
+        if (!opcaoFrete) {
+            return res.status(400).json({ error: "Opção de frete inválida ou expirada. Recalcule o frete e tente novamente." });
+        }
+
+        const valor_frete = opcaoFrete.preco;
 
         await client.query('BEGIN');
 

@@ -58,18 +58,19 @@ function selecionarCaixa(volumeTotalCm3) {
 }
 
 // ============================================================
-// POST /api/frete/calculate
-// Body: { carrinho: [{ produto_id, quantidade }], cep_destino: "00000000" }
+// Lógica de cálculo de frete — reutilizável por outras rotas (ex: orders.js)
+// Lança erro com .status definido para ser tratado pelo handler HTTP.
 // ============================================================
-router.post('/calculate', async (req, res) => {
-    try {
-        const { carrinho, cep_destino } = req.body;
-
+async function calcularOpcoesFrete(carrinho, cep_destino) {
         if (!carrinho || !Array.isArray(carrinho) || carrinho.length === 0) {
-            return res.status(400).json({ error: 'Carrinho inválido ou vazio.' });
+            const err = new Error('Carrinho inválido ou vazio.');
+            err.status = 400;
+            throw err;
         }
         if (!cep_destino) {
-            return res.status(400).json({ error: 'CEP de destino obrigatório.' });
+            const err = new Error('CEP de destino obrigatório.');
+            err.status = 400;
+            throw err;
         }
 
         // Limpa CEP (remove hífen)
@@ -86,7 +87,9 @@ router.post('/calculate', async (req, res) => {
         );
 
         if (produtos.length === 0) {
-            return res.status(400).json({ error: 'Nenhum produto encontrado.' });
+            const err = new Error('Nenhum produto encontrado.');
+            err.status = 400;
+            throw err;
         }
 
         // ── 2. Monta arrays para cálculo ───────────────────────────────────
@@ -120,7 +123,7 @@ router.post('/calculate', async (req, res) => {
         if (!superFreteToken || superFreteToken === 'seu_token_aqui') {
             // Sem token configurado → retorna estimativa local (para dev)
             console.warn('[FRETE] SUPER_FRETE_TOKEN não configurado — retornando estimativa local.');
-            return res.json({
+            return {
                 sucesso: true,
                 modo: 'estimativa_local',
                 aviso: 'Configure SUPER_FRETE_TOKEN no .env para cotações reais.',
@@ -130,7 +133,7 @@ router.post('/calculate', async (req, res) => {
                     { id: 1, nome: 'PAC',   preco: 18.50, preco_formatted: 'R$ 18,50', prazo: '5 a 7 dias úteis', transportadora: 'Correios' },
                     { id: 2, nome: 'SEDEX', preco: 32.00, preco_formatted: 'R$ 32,00', prazo: '1 a 2 dias úteis', transportadora: 'Correios' },
                 ],
-            });
+            };
         }
 
         const sfUrl = getSuperFreteUrl();
@@ -178,7 +181,7 @@ router.post('/calculate', async (req, res) => {
                 } : caixaSugerida,
             }));
 
-        return res.json({
+        return {
             sucesso: true,
             modo: 'superfrete',
             pesoEstimadoKg: pesoTotalKg,
@@ -186,9 +189,22 @@ router.post('/calculate', async (req, res) => {
             opcoes_frete: opcoesDisponiveis.length > 0
                 ? opcoesDisponiveis
                 : [{ nome: 'Frete padrão', preco: 25.00, preco_formatted: 'R$ 25,00', prazo: 'A consultar', transportadora: 'Correios' }],
-        });
+        };
+}
 
+// ============================================================
+// POST /api/frete/calculate
+// Body: { carrinho: [{ produto_id, quantidade }], cep_destino: "00000000" }
+// ============================================================
+router.post('/calculate', async (req, res) => {
+    try {
+        const { carrinho, cep_destino } = req.body;
+        const resultado = await calcularOpcoesFrete(carrinho, cep_destino);
+        res.json(resultado);
     } catch (error) {
+        if (error.status) {
+            return res.status(error.status).json({ error: error.message });
+        }
         // Trata erro da API da SuperFrete especificamente
         if (error.response) {
             console.error('[FRETE] Erro da API SuperFrete:', error.response.status, JSON.stringify(error.response.data));
@@ -205,4 +221,4 @@ router.post('/calculate', async (req, res) => {
     }
 });
 
-module.exports = router;
+module.exports = { router, calcularOpcoesFrete };

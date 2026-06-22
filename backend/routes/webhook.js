@@ -106,6 +106,33 @@ router.post('/mercadopago', async (req, res) => {
             return;
         }
 
+        // Se o pedido está sendo cancelado e o estoque ainda não tinha sido devolvido
+        // (ou seja, ele não estava já cancelado antes), devolve as unidades reservadas.
+        if (novoStatus === 'cancelado' && pedido.status !== 'cancelado') {
+            const client = await db.connect();
+            try {
+                await client.query('BEGIN');
+                await client.query(
+                    'UPDATE pedidos SET status = $1 WHERE id = $2',
+                    [novoStatus, pedido.id]
+                );
+                await client.query(`
+                    UPDATE produtos pr
+                    SET estoque = estoque + pi.quantidade
+                    FROM pedido_itens pi
+                    WHERE pi.pedido_id = $1 AND pi.produto_id = pr.id
+                `, [pedido.id]);
+                await client.query('COMMIT');
+                console.log(`[WEBHOOK] ✅ Pedido ${pedido.id} cancelado e estoque devolvido.`);
+            } catch (err) {
+                await client.query('ROLLBACK');
+                throw err;
+            } finally {
+                client.release();
+            }
+            return;
+        }
+
         // Atualiza o status do pedido no banco
         await db.query(
             'UPDATE pedidos SET status = $1 WHERE id = $2',

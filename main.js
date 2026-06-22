@@ -138,9 +138,6 @@ function getCartKey() {
 const state = {
     cart: JSON.parse(localStorage.getItem(getCartKey()) || '[]'),
     currentFilter: 'todos',
-    carouselIndex: 0,
-    carouselTotal: 3,
-    carouselInterval: null,
 };
 
 // ============================================================
@@ -152,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initRevealScroll();
     renderProducts('todos');
     initFilterButtons();
-    initCarousel();
     initContactForm();
     initModal();
     initCartUI();
@@ -374,7 +370,7 @@ function fetchProducts(category) {
                 badgeLabel: p.categoria === 'kits' ? 'Kit' : (p.id > 6 ? 'Novo' : ''),
                 tags: [p.categoria || 'artesanal'],
                 desc: p.descricao,
-                img: p.imagem_url || 'imagens/produtos/placeholder.png',
+                img: p.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
                 details: `Peso: ${p.peso_gramas}g`,
                 ingredients: 'Ingredientes naturais e orgânicos'
             }));
@@ -573,7 +569,7 @@ function fetchProductById(id) {
                 badgeLabel: product.categoria === 'kits' ? 'Kit' : (product.id > 6 ? 'Novo' : ''),
                 tags: [product.categoria || 'artesanal'],
                 desc: product.descricao,
-                img: product.imagem_url || 'imagens/produtos/placeholder.png',
+                img: product.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
                 details: `Peso: ${product.peso_gramas}g. Dimensões: ${product.comprimento_cm}x${product.largura_cm}x${product.altura_cm}cm`,
                 ingredients: 'Ingredientes naturais e orgânicos'
             };
@@ -582,62 +578,6 @@ function fetchProductById(id) {
             console.error(err);
             return null;
         });
-}
-
-// ============================================================
-// CARROSSEL DE DEPOIMENTOS
-// ============================================================
-function initCarousel() {
-    const track = document.getElementById('testimonial-track');
-    if (!track) return;
-
-    const total = track.children.length;
-    state.carouselTotal = total;
-
-    updateCarouselDots();
-    startCarouselAutoplay();
-
-    document.getElementById('carousel-prev')?.addEventListener('click', () => {
-        goToSlide((state.carouselIndex - 1 + total) % total);
-        resetAutoplay();
-    });
-
-    document.getElementById('carousel-next')?.addEventListener('click', () => {
-        goToSlide((state.carouselIndex + 1) % total);
-        resetAutoplay();
-    });
-
-    document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
-        dot.addEventListener('click', () => {
-            goToSlide(i);
-            resetAutoplay();
-        });
-    });
-}
-
-function goToSlide(index) {
-    const track = document.getElementById('testimonial-track');
-    if (!track) return;
-    state.carouselIndex = index;
-    track.style.transform = `translateX(-${index * 100}%)`;
-    updateCarouselDots();
-}
-
-function updateCarouselDots() {
-    document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
-        dot.classList.toggle('active', i === state.carouselIndex);
-    });
-}
-
-function startCarouselAutoplay() {
-    state.carouselInterval = setInterval(() => {
-        goToSlide((state.carouselIndex + 1) % state.carouselTotal);
-    }, 5000);
-}
-
-function resetAutoplay() {
-    clearInterval(state.carouselInterval);
-    startCarouselAutoplay();
 }
 
 // ============================================================

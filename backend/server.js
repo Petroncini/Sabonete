@@ -10,7 +10,7 @@ app.use(express.json());
 const authRoutes = require('./routes/auth');
 const productsRoutes = require('./routes/products');
 const ordersRoutes = require('./routes/orders');
-const shippingRoutes = require('./routes/shipping');
+const shippingRoutes = require('./routes/shipping').router;
 const webhookRoutes = require('./routes/webhook');
 
 // Endpoint de teste de saúde (Ping)

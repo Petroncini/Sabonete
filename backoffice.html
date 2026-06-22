@@ -198,8 +198,9 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Imagem URL</label>
-              <input type="text" id="prod-imagem-url" placeholder="ex: imagens/produtos/lavanda.png" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">URL da Imagem</label>
+              <input type="text" id="prod-imagem-url" placeholder="Cole a URL completa da imagem (ex: link do Imgur). NÃO use link do Google Drive." class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+              <p class="text-xs text-gray-400 mt-1">Suba a foto em imgur.com, clique com o botão direito na imagem e escolha "Copiar endereço da imagem". Cole esse link aqui.</p>
             </div>
           </div>
 
@@ -249,7 +250,7 @@
             currentProdutos = produtos;
 
             tbodyProdutos.innerHTML = produtos.map((p, idx) => {
-                const imgPath = p.imagem_url || 'imagens/produtos/placeholder.png';
+                const imgPath = p.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem';
                 const cat = p.categoria || 'artesanal';
                 return `
                 <tr>
@@ -381,11 +382,21 @@
                 <div class="mb-4">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Cliente</p>
                     <p class="font-medium">${ped.cliente_nome}</p>
-                    <p class="text-sm text-gray-500">${ped.email_cliente || 'E-mail não cadastrado'}</p>
+                    <p class="text-sm text-gray-500">📧 ${ped.email_cliente || 'E-mail não cadastrado'}</p>
                 </div>
                 <div class="mb-4">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Endereço de Entrega</p>
                     <p class="text-sm">${ped.cliente_endereco}</p>
+                </div>
+                <div class="mb-4 grid grid-cols-2 gap-3 text-sm">
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Referência do Pedido</p>
+                        <p class="font-mono">${ped.txid || '—'}</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">ID Pagamento (MercadoPago)</p>
+                        <p class="font-mono">${ped.mp_payment_id || '—'}</p>
+                    </div>
                 </div>
                 ${ped.codigo_rastreio ? `
                 <div class="mb-4 p-3 bg-blue-50 rounded-lg">
@@ -395,7 +406,15 @@
                 <div class="mb-4">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Itens do Pedido</p>
                     ${itensHtml}
-                    <div class="flex justify-between pt-3 font-bold">
+                    <div class="flex justify-between pt-3 text-sm text-gray-500">
+                        <span>Subtotal dos produtos</span>
+                        <span>R$ ${(parseFloat(ped.total) - parseFloat(ped.frete)).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-500">
+                        <span>Frete</span>
+                        <span>R$ ${parseFloat(ped.frete).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div class="flex justify-between pt-2 font-bold border-t border-gray-100 mt-1">
                         <span>Total</span>
                         <span style="color:var(--primary)">R$ ${parseFloat(ped.total).toFixed(2).replace('.', ',')}</span>
                     </div>
@@ -552,7 +571,7 @@
             preco: parseFloat(document.getElementById('prod-preco').value),
             estoque: parseInt(document.getElementById('prod-estoque').value),
             categoria: document.getElementById('prod-categoria').value,
-            imagem_url: document.getElementById('prod-imagem-url').value || 'imagens/produtos/placeholder.png',
+            imagem_url: document.getElementById('prod-imagem-url').value || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
             peso_gramas: parseInt(document.getElementById('prod-peso').value),
             comprimento_cm: parseInt(document.getElementById('prod-comprimento').value),
             largura_cm: parseInt(document.getElementById('prod-largura').value),

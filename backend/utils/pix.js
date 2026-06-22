@@ -32,6 +32,10 @@ async function createPixPayment({ amount, description, payerEmail, payerName, ex
     const client = getMercadoPagoClient();
     const paymentApi = new Payment(client);
 
+    // Sem expiração definida, um QR code abandonado pode ficar "pendente" pra sempre,
+    // travando o estoque reservado e nunca disparando webhook de cancelamento.
+    const dataExpiracao = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
     const result = await paymentApi.create({
         body: {
             transaction_amount: Number(amount),
@@ -39,6 +43,7 @@ async function createPixPayment({ amount, description, payerEmail, payerName, ex
             payment_method_id: 'pix',
             external_reference: externalRef,
             notification_url: process.env.MP_WEBHOOK_URL || undefined,
+            date_of_expiration: dataExpiracao,
             payer: {
                 email: payerEmail,
                 first_name: payerName ? payerName.split(' ')[0] : 'Cliente',

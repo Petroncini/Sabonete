@@ -90,19 +90,12 @@
 
           <!-- Pagamento -->
           <h2 class="font-head text-2xl mb-4" style="color:var(--heading);">3. Pagamento</h2>
-          <div class="grid sm:grid-cols-2 gap-4 mb-8">
+          <div class="grid gap-4 mb-8">
             <label class="cursor-pointer block relative">
-              <input type="radio" name="pagamento" value="pix" class="peer hidden" required />
+              <input type="radio" name="pagamento" value="pix" class="peer hidden" checked required />
               <div class="radio-card peer-checked:border-primary peer-checked:bg-[var(--cream)]">
-                <span class="font-bold block mb-1" style="color:var(--heading)">PIX (Desconto de 5%)</span>
+                <span class="font-bold block mb-1" style="color:var(--heading)">PIX</span>
                 <span class="text-sm text-gray-500">Aprovação imediata. QR Code gerado ao finalizar.</span>
-              </div>
-            </label>
-            <label class="cursor-pointer block relative">
-              <input type="radio" name="pagamento" value="cartao" class="peer hidden" required />
-              <div class="radio-card peer-checked:border-primary peer-checked:bg-[var(--cream)]">
-                <span class="font-bold block mb-1" style="color:var(--heading)">Cartão de Crédito</span>
-                <span class="text-sm text-gray-500">Até 3x sem juros no cartão.</span>
               </div>
             </label>
           </div>
@@ -261,7 +254,8 @@
                 body: JSON.stringify({
                     carrinho,
                     endereco_entrega: endereco,
-                    valor_frete: freteEscolhido.preco,
+                    cep_destino: cepInput.value,
+                    frete_id: freteEscolhido.id,
                     email_pagador: user.email || '',
                 }),
             });
