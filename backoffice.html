@@ -398,6 +398,11 @@
                         <p class="font-mono">${ped.mp_payment_id || '—'}</p>
                     </div>
                 </div>
+                ${ped.caixa_sugerida ? `
+                <div class="mb-4 p-3 bg-amber-50 rounded-lg">
+                    <p class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">📦 Caixa Sugerida (SuperFrete)</p>
+                    <p class="text-sm">${ped.caixa_sugerida.comprimento}cm × ${ped.caixa_sugerida.largura}cm × ${ped.caixa_sugerida.altura}cm — até ${ped.caixa_sugerida.peso}kg</p>
+                </div>` : ''}
                 ${ped.codigo_rastreio ? `
                 <div class="mb-4 p-3 bg-blue-50 rounded-lg">
                     <p class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">📦 Código de Rastreio</p>

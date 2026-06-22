@@ -136,9 +136,9 @@ router.post('/', authenticateToken, async (req, res) => {
         const totalGeral = totalProdutos + valor_frete;
 
         const resPedido = await client.query(
-            `INSERT INTO pedidos (usuario_id, cliente_nome, cliente_endereco, total, frete, status)
-             VALUES ($1, $2, $3, $4, $5, 'pendente') RETURNING id`,
-            [req.user.id, req.user.nome || "Cliente", endereco_entrega, totalGeral, valor_frete]
+            `INSERT INTO pedidos (usuario_id, cliente_nome, cliente_endereco, total, frete, caixa_sugerida, status)
+             VALUES ($1, $2, $3, $4, $5, $6, 'pendente') RETURNING id`,
+            [req.user.id, req.user.nome || "Cliente", endereco_entrega, totalGeral, valor_frete, opcaoFrete.caixa_sugerida ? JSON.stringify(opcaoFrete.caixa_sugerida) : null]
         );
 
         const pedidoId = resPedido.rows[0].id;

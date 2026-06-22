@@ -41,19 +41,42 @@ const CAIXAS_CORREIOS = [
 ];
 
 /**
- * Seleciona a menor caixa dos Correios que caiba o volume dado.
- * Aplica 30% de margem de folga pra garantir que os sabonetes entrem.
- * Se for maior que a maior caixa, retorna a maior.
+ * Seleciona a menor caixa dos Correios que caiba o pedido, usando DOIS critérios
+ * (não só volume — volume sozinho mente, porque não considera o formato/encaixe real):
+ *
+ * 1. CRITÉRIO DE ENCAIXE (rígido): a caixa precisa caber o MAIOR item individual
+ *    do carrinho em algum sentido de rotação — comparamos os lados ordenados
+ *    (maior, médio, menor) da caixa contra os do item. Isso evita escolher uma
+ *    caixa que "tem volume de sobra" no papel mas é fina/curta demais pro item
+ *    caber de verdade (ex: 3 sabonetes de 120cm³ cabem por volume numa caixa de
+ *    726cm³, mas o formato da caixa só comporta 2 deles lado a lado).
+ *
+ * 2. CRITÉRIO DE VOLUME (com margem de empacotamento realista): pedidos com vários
+ *    itens nunca enchem 100% o volume da caixa — sempre sobra ar entre as peças.
+ *    Empacotamento de itens pequenos e irregulares (sabonetes, formatos variados)
+ *    tipicamente atinge uns 55-65% de eficiência real, não 100%. Por isso aplicamos
+ *    65% de margem (ou seja, exigimos volumeMax >= volume_total / 0.65) em vez dos
+ *    30% antigos — assim a Camila não corre o risco de pagar um frete calculado
+ *    pra uma caixa pequena e descobrir no Correios que precisa de uma maior
+ *    (o que geralmente gera cobrança extra de diferença de cubagem).
  */
-function selecionarCaixa(volumeTotalCm3) {
-    const volumeComFolga = Math.ceil(volumeTotalCm3 * 1.30);
+function selecionarCaixa(volumeTotalCm3, maiorItemDimsOrdenadas = [0, 0, 0]) {
+    const EFICIENCIA_EMPACOTAMENTO = 0.65;
+    const volumeComFolga = Math.ceil(volumeTotalCm3 / EFICIENCIA_EMPACOTAMENTO);
+
+    const caixaCabeOMaiorItem = (caixa) => {
+        const ladosCaixa = [caixa.comprimento, caixa.largura, caixa.altura].sort((a, b) => b - a);
+        return ladosCaixa[0] >= maiorItemDimsOrdenadas[0]
+            && ladosCaixa[1] >= maiorItemDimsOrdenadas[1]
+            && ladosCaixa[2] >= maiorItemDimsOrdenadas[2];
+    };
 
     for (const caixa of CAIXAS_CORREIOS) {
-        if (volumeComFolga <= caixa.volumeMax) {
+        if (volumeComFolga <= caixa.volumeMax && caixaCabeOMaiorItem(caixa)) {
             return { ...caixa, volumeUsado: volumeComFolga };
         }
     }
-    // Pedido maior que qualquer caixa padrão — retorna a maior
+    // Pedido maior que qualquer caixa padrão (por volume ou por não caber o maior item) — retorna a maior
     return { ...CAIXAS_CORREIOS[CAIXAS_CORREIOS.length - 1], volumeUsado: volumeComFolga };
 }
 
@@ -95,6 +118,7 @@ async function calcularOpcoesFrete(carrinho, cep_destino) {
         // ── 2. Monta arrays para cálculo ───────────────────────────────────
         let pesoTotalGramas = 150; // tara da embalagem (papelão + proteção)
         let volumeTotalCm3  = 0;
+        let maiorItemDimsOrdenadas = [0, 0, 0]; // [maior, médio, menor] lado do MAIOR item individual
         const produtosParaApi = [];
 
         for (const item of carrinho) {
@@ -104,6 +128,15 @@ async function calcularOpcoesFrete(carrinho, cep_destino) {
             const qty = item.quantidade || 1;
             pesoTotalGramas += prod.peso_gramas * qty;
             volumeTotalCm3  += prod.comprimento_cm * prod.largura_cm * prod.altura_cm * qty;
+
+            // Guarda os lados do maior item individual (ordenados), pra garantir que a
+            // caixa escolhida caiba ESSE item mesmo que o volume total "pareça" sobrar.
+            const ladosItem = [prod.comprimento_cm, prod.largura_cm, prod.altura_cm].sort((a, b) => b - a);
+            const volumeItem = ladosItem[0] * ladosItem[1] * ladosItem[2];
+            const volumeMaiorAtual = maiorItemDimsOrdenadas[0] * maiorItemDimsOrdenadas[1] * maiorItemDimsOrdenadas[2];
+            if (volumeItem > volumeMaiorAtual) {
+                maiorItemDimsOrdenadas = ladosItem;
+            }
 
             produtosParaApi.push({
                 quantity: qty,
@@ -115,7 +148,7 @@ async function calcularOpcoesFrete(carrinho, cep_destino) {
         }
 
         const pesoTotalKg = parseFloat((pesoTotalGramas / 1000).toFixed(3));
-        const caixaSugerida = selecionarCaixa(volumeTotalCm3);
+        const caixaSugerida = selecionarCaixa(volumeTotalCm3, maiorItemDimsOrdenadas);
 
         // ── 3. Chama a API da SuperFrete ───────────────────────────────────
         const superFreteToken = process.env.SUPER_FRETE_TOKEN;
@@ -149,6 +182,8 @@ async function calcularOpcoesFrete(carrinho, cep_destino) {
             },
             products: produtosParaApi,
         };
+
+        console.log('[FRETE] Requisição enviada à SuperFrete:', JSON.stringify(sfBody, null, 2));
 
         const sfResponse = await axios.post(sfUrl, sfBody, {
             headers: {
