@@ -376,13 +376,20 @@
     async function apagarProduto(id) {
         if (!confirm('Deseja realmente apagar este produto?')) return;
         try {
-            await fetch(`/api/produtos/${id}`, {
+            const res = await fetch(`/api/produtos/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert('Erro: ' + (data.error || 'tente novamente.'));
+                return;
+            }
+
             loadAdminData();
         } catch (err) {
-            alert('Erro ao apagar.');
+            alert('Erro ao conectar com o servidor.');
         }
     }
 
