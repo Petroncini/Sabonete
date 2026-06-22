@@ -12,5 +12,5 @@ RUN cd backend && npm install
 # Expõe a porta que o Railway vai usar
 EXPOSE 3000
 
-# Comando para iniciar o servidor
-CMD ["node", "backend/server.js"]
+# Roda as migrações e então inicia o servidor
+CMD ["sh", "-c", "node backend/migrate.js && node backend/server.js"]

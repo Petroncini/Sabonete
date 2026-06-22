@@ -9,9 +9,8 @@ services:
     ports:
       - "${DB_PORT}:5432"
     volumes:
-      # Monta a pasta de scripts para que o PostgreSQL rode todos os .sql (schema e data) automaticamente
-      - ./init-scripts:/docker-entrypoint-initdb.d/
       # Volume persistente para não perder os dados quando o container parar
+      # Migrações (schema e data) agora são aplicadas por backend/migrate.js no start do app
       - postgres_data:/var/lib/postgresql/data
 
 volumes:
