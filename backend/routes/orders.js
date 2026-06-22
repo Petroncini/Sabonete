@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
 const { createPixPayment, getPixPaymentStatus, refundPayment } = require('../utils/pix');
-const { enviarEmailEnvio } = require('../utils/email');
+const { enviarEmailEnvio, enviarEmailPagamentoConfirmado, enviarEmailCancelado, enviarEmailReembolso } = require('../utils/email');
 const { calcularOpcoesFrete } = require('./shipping');
 
 const router = express.Router();
@@ -203,6 +203,8 @@ router.patch('/:id/pagamento', authenticateToken, requireAdmin, async (req, res)
             return res.status(404).json({ error: "Pedido não encontrado." });
         }
 
+        notificarPagamentoConfirmado(id).catch(err => console.error('[EMAIL] Erro assíncrono (pagamento):', err.message));
+
         res.json({ message: "Pagamento confirmado!", pedido: pedido.rows[0] });
 
     } catch (error) {
@@ -210,6 +212,34 @@ router.patch('/:id/pagamento', authenticateToken, requireAdmin, async (req, res)
         res.status(500).json({ error: "Erro ao confirmar pagamento." });
     }
 });
+
+// ── Helper de notificação por e-mail (usado pelo confirm manual acima e
+// reaproveitável pelo webhook do Mercado Pago) ───────────────────────────────
+async function notificarPagamentoConfirmado(pedidoId) {
+    const pedidoRes = await db.query(`
+        SELECT p.*, u.email as email_cliente, u.nome as nome_cliente
+        FROM pedidos p
+        LEFT JOIN usuarios u ON p.usuario_id = u.id
+        WHERE p.id = $1
+    `, [pedidoId]);
+    if (pedidoRes.rows.length === 0) return;
+    const pedido = pedidoRes.rows[0];
+
+    const itensRes = await db.query(`
+        SELECT pi.quantidade, pi.preco_unitario, pr.nome
+        FROM pedido_itens pi
+        LEFT JOIN produtos pr ON pi.produto_id = pr.id
+        WHERE pi.pedido_id = $1
+    `, [pedidoId]);
+
+    await enviarEmailPagamentoConfirmado({
+        nomeCliente: pedido.nome_cliente || pedido.cliente_nome || 'Cliente',
+        emailCliente: pedido.email_cliente,
+        pedidoId,
+        itens: itensRes.rows,
+        total: pedido.total,
+    });
+}
 
 // ── Marcar como Enviado + enviar e-mail pro cliente (Admin) ──────────────────
 router.patch('/:id/envio', authenticateToken, requireAdmin, async (req, res) => {
@@ -308,6 +338,13 @@ router.patch('/:id/cancelar', authenticateToken, async (req, res) => {
         `, [id]);
 
         await client.query('COMMIT');
+
+        enviarEmailCancelado({
+            nomeCliente: req.user.nome || pedido.cliente_nome || 'Cliente',
+            emailCliente: req.user.email,
+            pedidoId: id,
+        }).catch(err => console.error('[EMAIL] Erro assíncrono (cancelado):', err.message));
+
         res.json({ message: "Pedido cancelado." });
 
     } catch (error) {
@@ -327,7 +364,12 @@ router.patch('/:id/reembolsar', authenticateToken, requireAdmin, async (req, res
     try {
         const { id } = req.params;
 
-        const pedidoRes = await client.query('SELECT * FROM pedidos WHERE id = $1', [id]);
+        const pedidoRes = await client.query(`
+            SELECT p.*, u.email as email_cliente, u.nome as nome_cliente
+            FROM pedidos p
+            LEFT JOIN usuarios u ON p.usuario_id = u.id
+            WHERE p.id = $1
+        `, [id]);
         if (pedidoRes.rows.length === 0) {
             return res.status(404).json({ error: "Pedido não encontrado." });
         }
@@ -364,6 +406,13 @@ router.patch('/:id/reembolsar', authenticateToken, requireAdmin, async (req, res
             WHERE pi.pedido_id = $1 AND pi.produto_id = pr.id
         `, [id]);
         await client.query('COMMIT');
+
+        enviarEmailReembolso({
+            nomeCliente: pedido.nome_cliente || pedido.cliente_nome || 'Cliente',
+            emailCliente: pedido.email_cliente,
+            pedidoId: id,
+            total: pedido.total,
+        }).catch(err => console.error('[EMAIL] Erro assíncrono (reembolso):', err.message));
 
         res.json({ message: "Pedido reembolsado e cancelado com sucesso." });
 

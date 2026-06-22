@@ -5,6 +5,7 @@ const express = require('express');
 const crypto = require('crypto');
 const db = require('../db');
 const { getPixPaymentStatus } = require('../utils/pix');
+const { enviarEmailPagamentoConfirmado, enviarEmailCancelado } = require('../utils/email');
 
 const router = express.Router();
 
@@ -72,11 +73,13 @@ router.post('/mercadopago', async (req, res) => {
         const mpStatus = await getPixPaymentStatus(paymentId);
         console.log(`[WEBHOOK] Status do pagamento ${paymentId}: ${mpStatus.status}`);
 
-        // Busca o pedido associado ao payment_id
-        const pedidoRes = await db.query(
-            'SELECT id, status FROM pedidos WHERE mp_payment_id = $1',
-            [String(paymentId)]
-        );
+        // Busca o pedido associado ao payment_id (com dados do cliente pro e-mail)
+        const pedidoRes = await db.query(`
+            SELECT p.id, p.status, p.total, u.email as email_cliente, u.nome as nome_cliente, p.cliente_nome
+            FROM pedidos p
+            LEFT JOIN usuarios u ON p.usuario_id = u.id
+            WHERE p.mp_payment_id = $1
+        `, [String(paymentId)]);
 
         if (pedidoRes.rows.length === 0) {
             console.warn(`[WEBHOOK] Nenhum pedido encontrado para mp_payment_id=${paymentId}`);
@@ -124,6 +127,12 @@ router.post('/mercadopago', async (req, res) => {
                 `, [pedido.id]);
                 await client.query('COMMIT');
                 console.log(`[WEBHOOK] ✅ Pedido ${pedido.id} cancelado e estoque devolvido.`);
+
+                enviarEmailCancelado({
+                    nomeCliente: pedido.nome_cliente || pedido.cliente_nome || 'Cliente',
+                    emailCliente: pedido.email_cliente,
+                    pedidoId: pedido.id,
+                }).catch(err => console.error('[EMAIL] Erro assíncrono (cancelado):', err.message));
             } catch (err) {
                 await client.query('ROLLBACK');
                 throw err;
@@ -140,6 +149,23 @@ router.post('/mercadopago', async (req, res) => {
         );
 
         console.log(`[WEBHOOK] ✅ Pedido ${pedido.id} atualizado para "${novoStatus}".`);
+
+        if (novoStatus === 'pago') {
+            const itensRes = await db.query(`
+                SELECT pi.quantidade, pi.preco_unitario, pr.nome
+                FROM pedido_itens pi
+                LEFT JOIN produtos pr ON pi.produto_id = pr.id
+                WHERE pi.pedido_id = $1
+            `, [pedido.id]);
+
+            enviarEmailPagamentoConfirmado({
+                nomeCliente: pedido.nome_cliente || pedido.cliente_nome || 'Cliente',
+                emailCliente: pedido.email_cliente,
+                pedidoId: pedido.id,
+                itens: itensRes.rows,
+                total: pedido.total,
+            }).catch(err => console.error('[EMAIL] Erro assíncrono (pagamento):', err.message));
+        }
 
     } catch (error) {
         console.error('[WEBHOOK] Erro ao processar notificação:', error.message);

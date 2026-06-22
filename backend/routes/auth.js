@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const { enviarEmailBoasVindas } = require('../utils/email');
 
 const router = express.Router();
 
@@ -32,6 +33,10 @@ router.post('/register', async (req, res) => {
             'INSERT INTO usuarios (nome, email, senha_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, nome, email, role',
             [nome, email, senhaHash, role]
         );
+
+        // Não bloqueia a resposta se o e-mail falhar.
+        enviarEmailBoasVindas({ nomeCliente: nome, emailCliente: email })
+            .catch(err => console.error('[EMAIL] Erro assíncrono (boas-vindas):', err.message));
 
         res.status(201).json({ message: "Usuário registrado com sucesso!", user: newUser.rows[0] });
 

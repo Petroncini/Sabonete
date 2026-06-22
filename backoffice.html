@@ -79,7 +79,7 @@
               <th>ID</th>
               <th>Imagem</th>
               <th>Produto</th>
-              <th>Categoria</th>
+              <th>Tags</th>
               <th>Preço</th>
               <th>Estoque</th>
               <th>Ações</th>
@@ -188,21 +188,22 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Categoria</label>
-              <select id="prod-categoria" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none">
-                <option value="corpo">Corpo</option>
-                <option value="rosto">Rosto</option>
-                <option value="kits">Kits</option>
-                <option value="especiais">Especiais</option>
-              </select>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider">Tags</label>
+              <button type="button" onclick="abrirModalTags()" class="text-xs text-primary hover:underline">Gerenciar tags</button>
             </div>
-            <div>
-              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">URL da Imagem</label>
-              <input type="text" id="prod-imagem-url" placeholder="Cole a URL completa da imagem (ex: link do Imgur). NÃO use link do Google Drive." class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
-              <p class="text-xs text-gray-400 mt-1">Suba a foto em imgur.com, clique com o botão direito na imagem e escolha "Copiar endereço da imagem". Cole esse link aqui.</p>
+            <div id="prod-tags-checkboxes" class="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-lg min-h-[44px]">
+              <!-- Renderizado via JS -->
             </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Foto do Produto</label>
+            <input type="file" id="prod-imagem-arquivo" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" onchange="enviarImagemProduto(this)" />
+            <input type="hidden" id="prod-imagem-url" />
+            <p class="text-xs text-gray-400 mt-1" id="prod-imagem-status">Selecione uma foto (JPEG, PNG, WEBP ou GIF, até 5MB).</p>
+            <img id="prod-imagem-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border" style="border-color:var(--border)" />
           </div>
 
           <div class="grid grid-cols-4 gap-2">
@@ -226,6 +227,23 @@
           
           <button type="submit" class="w-full btn-primary mt-4 py-3 justify-center">Salvar Produto</button>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal de Gerenciamento de Tags -->
+    <div id="tags-modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+        <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-xl font-bold" onclick="fecharModalTags()">✕</button>
+        <h2 class="font-head text-2xl mb-4 text-heading font-bold">Gerenciar Tags</h2>
+
+        <form id="nova-tag-form" class="flex gap-2 mb-4">
+          <input type="text" id="nova-tag-nome" placeholder="Nome da nova tag" class="flex-1 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" required />
+          <button type="submit" class="btn-primary px-4">Adicionar</button>
+        </form>
+
+        <div id="tags-lista" class="space-y-2">
+          <!-- Renderizado via JS -->
+        </div>
       </div>
     </div>
   </main>
@@ -264,19 +282,27 @@
     }
 
     let currentProdutos = [];
+    let currentTags = [];
+
+    async function loadTags() {
+        const res = await fetch('/api/tags');
+        currentTags = await res.json();
+    }
 
     async function loadAdminData() {
         try {
+            await loadTags();
+
             // Fetch Produtos
             const resProdutos = await fetch('/api/produtos');
             const produtos = await resProdutos.json();
             const tbodyProdutos = document.getElementById('produtos-tbody');
-            
+
             currentProdutos = produtos;
 
             tbodyProdutos.innerHTML = produtos.map((p, idx) => {
                 const imgPath = p.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem';
-                const cat = p.categoria || 'artesanal';
+                const tagsHtml = (p.tags || []).map(t => `<span class="px-2 py-0.5 bg-cream rounded text-xs" style="background:var(--cream);color:var(--heading)">${t.nome}</span>`).join(' ') || '<span class="text-gray-400 text-xs">sem tags</span>';
                 return `
                 <tr>
                   <td class="text-gray-500">#${p.id}</td>
@@ -284,7 +310,7 @@
                     <img src="${imgPath}" alt="${p.nome}" class="w-12 h-12 object-cover rounded-md" />
                   </td>
                   <td class="font-bold" style="color:var(--heading)">${p.nome}</td>
-                  <td class="text-sm text-gray-600 capitalize">${cat}</td>
+                  <td class="text-sm"><div class="flex flex-wrap gap-1">${tagsHtml}</div></td>
                   <td>R$ ${parseFloat(p.preco).toFixed(2).replace('.', ',')}</td>
                   <td><span class="${p.estoque > 5 ? 'text-green-600' : 'text-red-500'} font-semibold">${p.estoque}</span></td>
                   <td>
@@ -584,6 +610,92 @@
         abrirModalProduto(currentProdutos[idx]);
     }
 
+    function renderTagCheckboxes(tagIdsSelecionadas = []) {
+        const container = document.getElementById('prod-tags-checkboxes');
+        if (currentTags.length === 0) {
+            container.innerHTML = '<span class="text-xs text-gray-400">Nenhuma tag criada ainda. Clique em "Gerenciar tags" pra criar.</span>';
+            return;
+        }
+        container.innerHTML = currentTags.map(t => `
+            <label class="flex items-center gap-1 px-2 py-1 border rounded cursor-pointer text-sm" style="border-color:var(--border)">
+                <input type="checkbox" value="${t.id}" class="prod-tag-checkbox" ${tagIdsSelecionadas.includes(t.id) ? 'checked' : ''} />
+                ${t.nome}
+            </label>
+        `).join('');
+    }
+
+    function abrirModalTags() {
+        renderTagsLista();
+        const overlay = document.getElementById('tags-modal-overlay');
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+    }
+
+    function fecharModalTags() {
+        const overlay = document.getElementById('tags-modal-overlay');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }
+
+    function renderTagsLista() {
+        const lista = document.getElementById('tags-lista');
+        if (currentTags.length === 0) {
+            lista.innerHTML = '<p class="text-sm text-gray-400">Nenhuma tag criada ainda.</p>';
+            return;
+        }
+        lista.innerHTML = currentTags.map(t => `
+            <div class="flex items-center justify-between p-2 border rounded-lg" style="border-color:var(--border)">
+                <span>${t.nome}</span>
+                <button onclick="deletarTag(${t.id})" class="text-red-500 text-xs hover:underline">Remover</button>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('nova-tag-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('nova-tag-nome');
+        const nome = input.value.trim();
+        if (!nome) return;
+
+        try {
+            const res = await fetch('/api/tags', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ nome }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert('Erro: ' + (data.error || 'tente novamente'));
+                return;
+            }
+
+            input.value = '';
+            await loadTags();
+            renderTagsLista();
+            renderTagCheckboxes(Array.from(document.querySelectorAll('.prod-tag-checkbox:checked')).map(cb => parseInt(cb.value)));
+        } catch (err) {
+            alert('Erro ao conectar com o servidor.');
+        }
+    });
+
+    async function deletarTag(id) {
+        if (!confirm('Remover essa tag? Ela será removida de todos os produtos que a usam.')) return;
+
+        try {
+            await fetch(`/api/tags/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            await loadTags();
+            renderTagsLista();
+            renderTagCheckboxes(Array.from(document.querySelectorAll('.prod-tag-checkbox:checked')).map(cb => parseInt(cb.value)));
+            loadAdminData();
+        } catch (err) {
+            alert('Erro ao conectar com o servidor.');
+        }
+    }
+
     function abrirModalProduto(produto = null) {
         const overlay = document.getElementById('admin-product-modal-overlay');
         const form = document.getElementById('admin-product-form');
@@ -592,7 +704,12 @@
         form.reset();
         overlay.classList.remove('hidden');
         overlay.classList.add('flex');
-        
+
+        const preview = document.getElementById('prod-imagem-preview');
+        const status = document.getElementById('prod-imagem-status');
+
+        renderTagCheckboxes(produto ? produto.tags.map(t => t.id) : []);
+
         if (produto) {
             title.textContent = 'Editar Produto';
             document.getElementById('product-id').value = produto.id;
@@ -600,12 +717,20 @@
             document.getElementById('prod-descricao').value = produto.descricao;
             document.getElementById('prod-preco').value = produto.preco;
             document.getElementById('prod-estoque').value = produto.estoque;
-            document.getElementById('prod-categoria').value = produto.categoria || 'corpo';
             document.getElementById('prod-imagem-url').value = produto.imagem_url || '';
             document.getElementById('prod-peso').value = produto.peso_gramas;
             document.getElementById('prod-comprimento').value = produto.comprimento_cm;
             document.getElementById('prod-largura').value = produto.largura_cm;
             document.getElementById('prod-altura').value = produto.altura_cm;
+
+            if (produto.imagem_url) {
+                preview.src = produto.imagem_url;
+                preview.classList.remove('hidden');
+                status.textContent = 'Foto atual. Selecione um arquivo pra trocar.';
+            } else {
+                preview.classList.add('hidden');
+                status.textContent = 'Selecione uma foto (JPEG, PNG, WEBP ou GIF, até 5MB).';
+            }
         } else {
             title.textContent = 'Adicionar Novo Produto';
             document.getElementById('product-id').value = '';
@@ -613,6 +738,43 @@
             document.getElementById('prod-comprimento').value = 8;
             document.getElementById('prod-largura').value = 5;
             document.getElementById('prod-altura').value = 3;
+            preview.classList.add('hidden');
+            status.textContent = 'Selecione uma foto (JPEG, PNG, WEBP ou GIF, até 5MB).';
+        }
+    }
+
+    async function enviarImagemProduto(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const status = document.getElementById('prod-imagem-status');
+        const preview = document.getElementById('prod-imagem-preview');
+        status.textContent = 'Enviando foto…';
+
+        const formData = new FormData();
+        formData.append('imagem', file);
+
+        try {
+            const res = await fetch('/api/produtos/upload', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData,
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                status.textContent = 'Erro: ' + (data.error || 'tente novamente.');
+                input.value = '';
+                return;
+            }
+
+            document.getElementById('prod-imagem-url').value = data.url;
+            preview.src = data.url;
+            preview.classList.remove('hidden');
+            status.textContent = 'Foto enviada com sucesso!';
+        } catch (err) {
+            status.textContent = 'Erro ao conectar com o servidor.';
+            input.value = '';
         }
     }
 
@@ -631,7 +793,7 @@
             descricao: document.getElementById('prod-descricao').value,
             preco: parseFloat(document.getElementById('prod-preco').value),
             estoque: parseInt(document.getElementById('prod-estoque').value),
-            categoria: document.getElementById('prod-categoria').value,
+            tag_ids: Array.from(document.querySelectorAll('.prod-tag-checkbox:checked')).map(cb => parseInt(cb.value)),
             imagem_url: document.getElementById('prod-imagem-url').value || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
             peso_gramas: parseInt(document.getElementById('prod-peso').value),
             comprimento_cm: parseInt(document.getElementById('prod-comprimento').value),

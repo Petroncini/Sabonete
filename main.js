@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavbar();
     initRevealScroll();
     renderProducts('todos');
-    initFilterButtons();
+    renderFilterBar();
     initContactForm();
     initModal();
     initCartUI();
@@ -392,24 +392,28 @@ function fetchProducts(category) {
                 console.error('Resposta da API não é um array:', data);
                 return [];
             }
-            const formattedProducts = data.map(p => ({
-                id: p.id,
-                name: p.nome,
-                category: p.categoria || 'todos',
-                price: parseFloat(p.preco),
-                badge: p.categoria === 'kits' ? 'kit' : (p.id > 6 ? 'new' : ''),
-                badgeLabel: p.categoria === 'kits' ? 'Kit' : (p.id > 6 ? 'Novo' : ''),
-                tags: [p.categoria || 'artesanal'],
-                desc: p.descricao,
-                img: p.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
-                details: `Peso: ${p.peso_gramas}g`,
-                ingredients: 'Ingredientes naturais e orgânicos'
-            }));
-            
+            const formattedProducts = data.map(p => {
+                const tagNomes = (p.tags || []).map(t => t.nome);
+                const isKit = tagNomes.includes('kits');
+                return {
+                    id: p.id,
+                    name: p.nome,
+                    tagIds: (p.tags || []).map(t => t.id),
+                    price: parseFloat(p.preco),
+                    badge: isKit ? 'kit' : (p.id > 6 ? 'new' : ''),
+                    badgeLabel: isKit ? 'Kit' : (p.id > 6 ? 'Novo' : ''),
+                    tags: tagNomes.length > 0 ? tagNomes : ['artesanal'],
+                    desc: p.descricao,
+                    img: p.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
+                    details: `Peso: ${p.peso_gramas}g`,
+                    ingredients: 'Ingredientes naturais e orgânicos'
+                };
+            });
+
             allProducts = formattedProducts;
 
             if (category === 'todos') return formattedProducts;
-            return formattedProducts.filter(p => p.category === category);
+            return formattedProducts.filter(p => p.tagIds.includes(parseInt(category)));
         })
         .catch(err => {
             console.error('Error fetching products:', err);
@@ -452,6 +456,30 @@ function initFilterButtons() {
             renderProducts(cat);
         });
     });
+}
+
+// Busca as tags cadastradas e monta os botões de filtro dinamicamente
+// (além do botão fixo "Todos" que já existe no HTML).
+async function renderFilterBar() {
+    const filterBar = document.getElementById('filter-bar');
+    if (!filterBar) return;
+
+    try {
+        const res = await fetch('/api/tags');
+        const tags = await res.json();
+
+        tags.forEach(tag => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.dataset.filter = tag.id;
+            btn.textContent = tag.nome.charAt(0).toUpperCase() + tag.nome.slice(1);
+            filterBar.appendChild(btn);
+        });
+    } catch (err) {
+        console.error('Erro ao carregar tags para os filtros:', err);
+    } finally {
+        initFilterButtons();
+    }
 }
 
 // ============================================================
