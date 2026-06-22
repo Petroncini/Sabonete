@@ -195,13 +195,32 @@ router.post('/', authenticateToken, async (req, res) => {
 router.post('/manual', authenticateToken, requireAdmin, async (req, res) => {
     const client = await db.connect();
     try {
-        const { cliente_nome, itens, frete, origem_venda, observacoes, endereco_entrega } = req.body;
+        const { cliente_nome, itens, cep_destino, frete_id, origem_venda, observacoes, endereco_entrega } = req.body;
 
         if (!cliente_nome || !cliente_nome.trim()) {
             return res.status(400).json({ error: "Nome do cliente é obrigatório." });
         }
         if (!itens || itens.length === 0) {
             return res.status(400).json({ error: "Adicione pelo menos um item à venda." });
+        }
+
+        // Se foi informado CEP, calcula o frete real via SuperFrete — mesma lógica
+        // usada nas compras automáticas, pra venda manual ter o mesmo preço e caixa
+        // sugerida de verdade (e não um valor de frete digitado de cabeça).
+        let valorFrete = 0;
+        let caixaSugerida = null;
+
+        if (cep_destino) {
+            const carrinhoFrete = itens.map(item => ({ produto_id: item.produto_id, quantidade: item.quantidade }));
+            const cotacaoFrete = await calcularOpcoesFrete(carrinhoFrete, cep_destino);
+            const opcaoFrete = cotacaoFrete.opcoes_frete.find(op => String(op.id) === String(frete_id));
+
+            if (!opcaoFrete) {
+                return res.status(400).json({ error: "Opção de frete inválida ou expirada. Recalcule o frete e tente novamente." });
+            }
+
+            valorFrete = opcaoFrete.preco;
+            caixaSugerida = opcaoFrete.caixa_sugerida || null;
         }
 
         await client.query('BEGIN');
@@ -238,14 +257,13 @@ router.post('/manual', authenticateToken, requireAdmin, async (req, res) => {
             });
         }
 
-        const valorFrete = parseFloat(frete) || 0;
         const totalGeral = totalProdutos + valorFrete;
 
         const resPedido = await client.query(
             `INSERT INTO pedidos
-             (usuario_id, cliente_nome, cliente_endereco, total, frete, status, origem_venda, observacoes, registrado_manualmente)
-             VALUES (NULL, $1, $2, $3, $4, 'pago', $5, $6, true) RETURNING id`,
-            [cliente_nome.trim(), endereco_entrega || null, totalGeral, valorFrete, origem_venda || null, observacoes || null]
+             (usuario_id, cliente_nome, cliente_endereco, total, frete, caixa_sugerida, status, origem_venda, observacoes, registrado_manualmente)
+             VALUES (NULL, $1, $2, $3, $4, $5, 'pago', $6, $7, true) RETURNING id`,
+            [cliente_nome.trim(), endereco_entrega || null, totalGeral, valorFrete, caixaSugerida ? JSON.stringify(caixaSugerida) : null, origem_venda || null, observacoes || null]
         );
 
         const pedidoId = resPedido.rows[0].id;

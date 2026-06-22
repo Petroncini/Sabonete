@@ -276,9 +276,21 @@
             <p class="text-sm font-bold text-right" style="color:var(--primary)">Subtotal: <span id="venda-subtotal">R$ 0,00</span></p>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Frete (R$, se houver)</label>
-            <input type="number" id="venda-frete" step="0.01" value="0" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">CEP (se for enviar)</label>
+              <input type="text" id="venda-cep" placeholder="00000-000" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+            </div>
+            <div class="col-span-2">
+              <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Endereço</label>
+              <input type="text" id="venda-endereco" placeholder="Deixe em branco se for retirada/entrega em mãos" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none" />
+            </div>
+          </div>
+
+          <div id="venda-frete-opcoes-wrapper">
+            <label class="block text-xs font-bold text-secondary uppercase tracking-wider mb-1">Frete</label>
+            <p class="text-xs text-gray-400 mb-2">Sem CEP, a venda fica sem frete (retirada/entrega em mãos). Informe o CEP acima pra calcular o frete real via SuperFrete.</p>
+            <div id="venda-frete-opcoes"></div>
           </div>
 
           <div>
@@ -698,15 +710,18 @@
 
     // ── Venda Manual ─────────────────────────────────────────────────────────────
     let itensVendaManual = [];
+    let freteVendaManual = null;
 
     function abrirModalVendaManual() {
         itensVendaManual = [];
+        freteVendaManual = null;
 
         const select = document.getElementById('venda-item-produto');
         select.innerHTML = currentProdutos.map(p => `<option value="${p.id}">${p.nome} — R$ ${parseFloat(p.preco).toFixed(2).replace('.', ',')} (estoque: ${p.estoque})</option>`).join('');
 
         document.getElementById('venda-manual-form').reset();
         document.getElementById('venda-origem-outro').classList.add('hidden');
+        document.getElementById('venda-frete-opcoes').innerHTML = '';
         renderItensVendaManual();
 
         const overlay = document.getElementById('venda-manual-overlay');
@@ -718,6 +733,11 @@
         const overlay = document.getElementById('venda-manual-overlay');
         overlay.classList.add('hidden');
         overlay.classList.remove('flex');
+    }
+
+    function invalidarFreteVendaManual() {
+        freteVendaManual = null;
+        document.getElementById('venda-frete-opcoes').innerHTML = '';
     }
 
     function adicionarItemVenda() {
@@ -734,11 +754,13 @@
             itensVendaManual.push({ produto_id: produtoId, nome: produto.nome, preco: parseFloat(produto.preco), quantidade: qtd });
         }
         renderItensVendaManual();
+        invalidarFreteVendaManual();
     }
 
     function removerItemVenda(produtoId) {
         itensVendaManual = itensVendaManual.filter(i => i.produto_id !== produtoId);
         renderItensVendaManual();
+        invalidarFreteVendaManual();
     }
 
     function renderItensVendaManual() {
@@ -761,6 +783,59 @@
         document.getElementById('venda-subtotal').textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
     }
 
+    document.getElementById('venda-cep').addEventListener('blur', async () => {
+        const cepInput = document.getElementById('venda-cep');
+        const cep = cepInput.value.replace(/\D/g, '');
+        const areaFrete = document.getElementById('venda-frete-opcoes');
+
+        freteVendaManual = null;
+        if (cep.length !== 8) {
+            areaFrete.innerHTML = '';
+            return;
+        }
+        if (itensVendaManual.length === 0) {
+            areaFrete.innerHTML = '<p class="text-sm text-gray-500">Adicione itens à venda primeiro.</p>';
+            return;
+        }
+
+        areaFrete.innerHTML = '<p class="text-sm text-gray-400 animate-pulse">Calculando frete…</p>';
+
+        const carrinho = itensVendaManual.map(i => ({ produto_id: i.produto_id, quantidade: i.quantidade }));
+
+        try {
+            const res = await fetch('/api/frete/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ carrinho, cep_destino: cep }),
+            });
+            const data = await res.json();
+
+            if (!res.ok || !data.opcoes_frete) {
+                areaFrete.innerHTML = `<p class="text-sm text-red-500">Erro ao calcular frete: ${data.error || 'tente novamente'}</p>`;
+                return;
+            }
+
+            areaFrete.innerHTML = data.opcoes_frete.map((op, i) => `
+              <label class="cursor-pointer block relative mb-2">
+                <input type="radio" name="venda-frete-radio" value="${i}" class="peer hidden" ${i === 0 ? 'checked' : ''} />
+                <div class="radio-card peer-checked:border-primary peer-checked:bg-[var(--cream)] border rounded-lg p-2 text-sm" style="border-color:var(--border)">
+                  <span class="font-bold block">${op.transportadora ? op.transportadora + ' — ' : ''}${op.nome}</span>
+                  <span class="font-semibold" style="color:var(--primary)">${op.preco_formatted || 'R$ ' + op.preco.toFixed(2).replace('.', ',')}</span>
+                  <span class="text-gray-500 ml-2">${op.prazo}</span>
+                </div>
+              </label>
+            `).join('');
+
+            freteVendaManual = data.opcoes_frete[0];
+
+            areaFrete.querySelectorAll('input[name="venda-frete-radio"]').forEach((radio, i) => {
+                radio.addEventListener('change', () => { freteVendaManual = data.opcoes_frete[i]; });
+            });
+        } catch (err) {
+            areaFrete.innerHTML = '<p class="text-sm text-red-500">Erro ao conectar com o servidor de frete.</p>';
+        }
+    });
+
     document.getElementById('venda-manual-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -769,15 +844,28 @@
             return;
         }
 
+        const cep = document.getElementById('venda-cep').value.replace(/\D/g, '');
+        if (cep.length === 8 && !freteVendaManual) {
+            alert('Aguarde o cálculo do frete (ou escolha uma opção) antes de continuar.');
+            return;
+        }
+
         const origemSelect = document.getElementById('venda-origem').value;
         const origemVenda = origemSelect === 'outro'
             ? document.getElementById('venda-origem-outro').value.trim()
             : origemSelect;
 
+        const enderecoInput = document.getElementById('venda-endereco').value;
+        const enderecoCompleto = cep.length === 8
+            ? `${enderecoInput} — CEP: ${document.getElementById('venda-cep').value}`
+            : (enderecoInput || null);
+
         const payload = {
             cliente_nome: document.getElementById('venda-cliente-nome').value,
             itens: itensVendaManual.map(i => ({ produto_id: i.produto_id, quantidade: i.quantidade })),
-            frete: parseFloat(document.getElementById('venda-frete').value) || 0,
+            endereco_entrega: enderecoCompleto,
+            cep_destino: cep.length === 8 ? cep : undefined,
+            frete_id: freteVendaManual ? freteVendaManual.id : undefined,
             origem_venda: origemVenda || null,
             observacoes: document.getElementById('venda-observacoes').value || null,
         };
