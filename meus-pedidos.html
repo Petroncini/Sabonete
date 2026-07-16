@@ -28,8 +28,16 @@
   </script>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { background-color: var(--bg); }
-    .pedido-card { background: #fff; border-radius: 14px; box-shadow: var(--shadow); padding: 1.5rem; }
+    body {
+      background-color: var(--bg);
+    }
+
+    .pedido-card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+    }
   </style>
 </head>
 
@@ -46,8 +54,10 @@
           <li><a href="meus-pedidos.html" class="nav-link"><b>Meus Pedidos</b></a></li>
         </ul>
         <div class="flex items-center gap-4">
-          <button id="hamburger" class="md:hidden p-1" aria-label="Abrir menu" aria-expanded="false" style="color:var(--heading)">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <button id="hamburger" class="md:hidden p-1" aria-label="Abrir menu" aria-expanded="false"
+            style="color:var(--heading)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
@@ -76,74 +86,74 @@
 
   <footer>
     <div class="max-w-6xl mx-auto text-center" style="padding-bottom: 20px;">
-      <p class="footer-copy">© 2024 Ateliê Camila Petroncini. Todos os direitos reservados.</p>
+      <p class="footer-copy">© 2026 Ateliê Camila Petroncini. Todos os direitos reservados.</p>
     </div>
   </footer>
 
   <script>
     const token = localStorage.getItem('token');
     if (!token) {
-        alert('Você precisa fazer login para ver seus pedidos.');
-        window.location.href = 'login.html';
+      alert('Você precisa fazer login para ver seus pedidos.');
+      window.location.href = 'login.html';
     }
 
     // Guarda de sessão — token "fantasma" (válido mas de usuário que não existe mais).
     (function installSessionGuard() {
-        const originalFetch = window.fetch;
-        window.fetch = async function (...args) {
-            const response = await originalFetch.apply(this, args);
-            if (response.status === 401 && localStorage.getItem('token')) {
-                let isSessaoInvalida = false;
-                try {
-                    const data = await response.clone().json();
-                    isSessaoInvalida = data?.error === 'SESSAO_INVALIDA';
-                } catch (e) { /* corpo não é JSON, ignora */ }
-                if (isSessaoInvalida) {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    alert('Sua sessão expirou. Faça login novamente.');
-                    window.location.href = 'login.html';
-                }
-            }
-            return response;
-        };
+      const originalFetch = window.fetch;
+      window.fetch = async function (...args) {
+        const response = await originalFetch.apply(this, args);
+        if (response.status === 401 && localStorage.getItem('token')) {
+          let isSessaoInvalida = false;
+          try {
+            const data = await response.clone().json();
+            isSessaoInvalida = data?.error === 'SESSAO_INVALIDA';
+          } catch (e) { /* corpo não é JSON, ignora */ }
+          if (isSessaoInvalida) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            alert('Sua sessão expirou. Faça login novamente.');
+            window.location.href = 'login.html';
+          }
+        }
+        return response;
+      };
     })();
 
     const STATUS_INFO = {
-        pendente: { label: 'Aguardando Pagamento', badge: 'bg-yellow-100 text-yellow-800' },
-        pago: { label: 'Pago', badge: 'bg-green-100 text-green-800' },
-        enviado: { label: 'Enviado', badge: 'bg-blue-100 text-blue-800' },
-        cancelado: { label: 'Cancelado', badge: 'bg-red-100 text-red-800' },
+      pendente: { label: 'Aguardando Pagamento', badge: 'bg-yellow-100 text-yellow-800' },
+      pago: { label: 'Pago', badge: 'bg-green-100 text-green-800' },
+      enviado: { label: 'Enviado', badge: 'bg-blue-100 text-blue-800' },
+      cancelado: { label: 'Cancelado', badge: 'bg-red-100 text-red-800' },
     };
 
     async function carregarPedidos() {
-        const container = document.getElementById('pedidos-container');
-        try {
-            const res = await fetch('/api/pedidos/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+      const container = document.getElementById('pedidos-container');
+      try {
+        const res = await fetch('/api/pedidos/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-            if (!res.ok) {
-                container.innerHTML = '<p class="text-center text-red-500">Erro ao carregar seus pedidos.</p>';
-                return;
-            }
+        if (!res.ok) {
+          container.innerHTML = '<p class="text-center text-red-500">Erro ao carregar seus pedidos.</p>';
+          return;
+        }
 
-            const pedidos = await res.json();
+        const pedidos = await res.json();
 
-            if (pedidos.length === 0) {
-                container.innerHTML = `
+        if (pedidos.length === 0) {
+          container.innerHTML = `
                     <div class="pedido-card text-center">
                         <p class="text-gray-500 mb-4">Você ainda não fez nenhum pedido.</p>
                         <a href="index.html#produtos" class="btn-primary">Ver Produtos</a>
                     </div>`;
-                return;
-            }
+          return;
+        }
 
-            container.innerHTML = pedidos.map(ped => {
-                const info = STATUS_INFO[ped.status] || { label: ped.status, badge: 'bg-gray-100 text-gray-800' };
-                const data = new Date(ped.criado_em).toLocaleString('pt-BR');
+        container.innerHTML = pedidos.map(ped => {
+          const info = STATUS_INFO[ped.status] || { label: ped.status, badge: 'bg-gray-100 text-gray-800' };
+          const data = new Date(ped.criado_em).toLocaleString('pt-BR');
 
-                return `
+          return `
                 <div class="pedido-card">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -165,36 +175,37 @@
                         ${ped.status === 'pago' ? `<button onclick="cancelarPedido(${ped.id})" class="text-sm text-red-500 hover:underline">Cancelar e Reembolsar</button>` : ''}
                     </div>
                 </div>`;
-            }).join('');
+        }).join('');
 
-        } catch (err) {
-            console.error(err);
-            container.innerHTML = '<p class="text-center text-red-500">Erro ao conectar com o servidor.</p>';
-        }
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = '<p class="text-center text-red-500">Erro ao conectar com o servidor.</p>';
+      }
     }
 
     async function cancelarPedido(id) {
-        if (!confirm('Tem certeza que deseja cancelar este pedido? Essa ação não pode ser desfeita.')) return;
+      if (!confirm('Tem certeza que deseja cancelar este pedido? Essa ação não pode ser desfeita.')) return;
 
-        try {
-            const res = await fetch(`/api/pedidos/${id}/cancelar`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
+      try {
+        const res = await fetch(`/api/pedidos/${id}/cancelar`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
 
-            if (!res.ok) {
-                alert('Erro: ' + (data.error || 'tente novamente'));
-                return;
-            }
-
-            carregarPedidos();
-        } catch (err) {
-            alert('Erro ao conectar com o servidor.');
+        if (!res.ok) {
+          alert('Erro: ' + (data.error || 'tente novamente'));
+          return;
         }
+
+        carregarPedidos();
+      } catch (err) {
+        alert('Erro ao conectar com o servidor.');
+      }
     }
 
     document.addEventListener('DOMContentLoaded', carregarPedidos);
   </script>
 </body>
+
 </html>
