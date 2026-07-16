@@ -175,6 +175,22 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
 router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Check if product is in any active order
+        const activeOrders = await db.query(`
+            SELECT p.id 
+            FROM pedidos p
+            JOIN pedido_itens pi ON p.id = pi.pedido_id
+            WHERE pi.produto_id = $1 AND p.status IN ('pendente', 'pago')
+            LIMIT 1
+        `, [id]);
+
+        if (activeOrders.rows.length > 0) {
+            return res.status(409).json({
+                error: "Esse produto está em pedidos em andamento (pendente ou pago). Você só pode apagá-lo se todos os pedidos associados estiverem cancelados ou enviados."
+            });
+        }
+
         const deletedProduct = await db.query('DELETE FROM produtos WHERE id = $1 RETURNING *', [id]);
 
         if (deletedProduct.rows.length === 0) {
@@ -183,11 +199,6 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
 
         res.json({ message: "Produto deletado com sucesso." });
     } catch (error) {
-        if (error.code === '23503') { // foreign_key_violation
-            return res.status(409).json({
-                error: "Esse produto já aparece em pedidos feitos por clientes e não pode ser removido (isso quebraria o histórico de vendas). Em vez de remover, zere o estoque pra ele deixar de aparecer pra venda.",
-            });
-        }
         console.error(error);
         res.status(500).json({ error: "Erro ao deletar produto." });
     }

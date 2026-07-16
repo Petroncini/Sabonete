@@ -54,7 +54,7 @@ router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
         }
 
         const itensRes = await db.query(`
-            SELECT pi.quantidade, pi.preco_unitario, pr.nome, pr.imagem_url
+            SELECT pi.quantidade, pi.preco_unitario, COALESCE(pr.nome, pi.produto_nome, 'Produto Apagado') as nome, pr.imagem_url
             FROM pedido_itens pi
             LEFT JOIN produtos pr ON pi.produto_id = pr.id
             WHERE pi.pedido_id = $1
@@ -129,7 +129,8 @@ router.post('/', authenticateToken, async (req, res) => {
             itensProcessados.push({
                 produto_id: item.produto_id,
                 quantidade: item.quantidade,
-                preco_unitario: produtoDb.preco
+                preco_unitario: produtoDb.preco,
+                produto_nome: produtoDb.nome
             });
         }
 
@@ -146,9 +147,9 @@ router.post('/', authenticateToken, async (req, res) => {
 
         for (let item of itensProcessados) {
             await client.query(
-                `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario)
-                 VALUES ($1, $2, $3, $4)`,
-                [pedidoId, item.produto_id, item.quantidade, item.preco_unitario]
+                `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, produto_nome)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [pedidoId, item.produto_id, item.quantidade, item.preco_unitario, item.produto_nome]
             );
         }
 
@@ -254,6 +255,7 @@ router.post('/manual', authenticateToken, requireAdmin, async (req, res) => {
                 produto_id: item.produto_id,
                 quantidade: item.quantidade,
                 preco_unitario: produtoDb.preco,
+                produto_nome: produtoDb.nome
             });
         }
 
@@ -270,9 +272,9 @@ router.post('/manual', authenticateToken, requireAdmin, async (req, res) => {
 
         for (const item of itensProcessados) {
             await client.query(
-                `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario)
-                 VALUES ($1, $2, $3, $4)`,
-                [pedidoId, item.produto_id, item.quantidade, item.preco_unitario]
+                `INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, produto_nome)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [pedidoId, item.produto_id, item.quantidade, item.preco_unitario, item.produto_nome]
             );
         }
 
@@ -325,7 +327,7 @@ async function notificarPagamentoConfirmado(pedidoId) {
     const pedido = pedidoRes.rows[0];
 
     const itensRes = await db.query(`
-        SELECT pi.quantidade, pi.preco_unitario, pr.nome
+        SELECT pi.quantidade, pi.preco_unitario, COALESCE(pr.nome, pi.produto_nome, 'Produto Apagado') as nome
         FROM pedido_itens pi
         LEFT JOIN produtos pr ON pi.produto_id = pr.id
         WHERE pi.pedido_id = $1
@@ -368,7 +370,7 @@ router.patch('/:id/envio', authenticateToken, requireAdmin, async (req, res) => 
 
         // Busca itens pra incluir no e-mail
         const itensRes = await db.query(`
-            SELECT pi.quantidade, pi.preco_unitario, pr.nome
+            SELECT pi.quantidade, pi.preco_unitario, COALESCE(pr.nome, pi.produto_nome, 'Produto Apagado') as nome
             FROM pedido_itens pi
             LEFT JOIN produtos pr ON pi.produto_id = pr.id
             WHERE pi.pedido_id = $1

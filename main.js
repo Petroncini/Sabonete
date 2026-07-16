@@ -406,7 +406,8 @@ function fetchProducts(category) {
                     desc: p.descricao,
                     img: p.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
                     details: `Peso: ${p.peso_gramas}g`,
-                    ingredients: 'Ingredientes naturais e orgânicos'
+                    ingredients: 'Ingredientes naturais e orgânicos',
+                    estoque: p.estoque
                 };
             });
 
@@ -422,13 +423,19 @@ function fetchProducts(category) {
 }
 
 function createProductCard(p) {
-    const badgeHtml = p.badge
-        ? `<span class="product-badge ${p.badge}">${p.badgeLabel}</span>`
-        : '';
+    const isOutOfStock = p.estoque <= 0;
+    const badgeHtml = isOutOfStock
+        ? `<span class="product-badge out-of-stock" style="background-color: #666; color: white;">Esgotado</span>`
+        : (p.badge ? `<span class="product-badge ${p.badge}">${p.badgeLabel}</span>` : '');
     const tagsHtml = p.tags.map(t => `<span class="product-tag">${t}</span>`).join('');
+    
+    const btnHtml = isOutOfStock
+        ? `<button class="btn-cart" disabled style="background-color: #ccc; cursor: not-allowed;">Esgotado</button>`
+        : `<button class="btn-cart" data-id="${p.id}" aria-label="Adicionar ${p.name} ao carrinho">Adicionar</button>`;
+
     return `
     <article class="product-card" data-id="${p.id}" role="button" tabindex="0" aria-label="Ver detalhes: ${p.name}">
-      <div class="product-card-img-wrap">
+      <div class="product-card-img-wrap ${isOutOfStock ? 'opacity-70' : ''}">
         ${badgeHtml}
         <img src="${p.img}" alt="${p.name}" class="product-card-img" loading="lazy"/>
       </div>
@@ -438,9 +445,7 @@ function createProductCard(p) {
         <div class="product-tags">${tagsHtml}</div>
         <div class="product-card-footer">
           <span class="product-price">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
-          <button class="btn-cart" data-id="${p.id}" aria-label="Adicionar ${p.name} ao carrinho">
-            Adicionar
-          </button>
+          ${btnHtml}
         </div>
       </div>
     </article>`;
@@ -585,7 +590,9 @@ function openModal(productId) {
           <div class="product-tags mt-4 mb-5">${product.tags.map(t => `<span class="product-tag">${t}</span>`).join('')}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
             <span class="product-price" style="font-size:1.6rem">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
-            <button class="btn-primary" id="modal-cart-btn" data-id="${product.id}">🛒 Adicionar ao Carrinho</button>
+            ${product.estoque <= 0 
+                ? `<button class="btn-primary" disabled style="background-color: #ccc; cursor: not-allowed; opacity: 0.8;">Esgotado</button>`
+                : `<button class="btn-primary" id="modal-cart-btn" data-id="${product.id}">🛒 Adicionar ao Carrinho</button>`}
           </div>
           <a href="https://wa.me/5511999999999?text=Olá! Tenho interesse no ${encodeURIComponent(product.name)}" target="_blank" rel="noopener"
              class="btn-outline mt-3" style="width:100%;justify-content:center">
@@ -630,7 +637,8 @@ function fetchProductById(id) {
                 desc: product.descricao,
                 img: product.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
                 details: `Peso: ${product.peso_gramas}g. Dimensões: ${product.comprimento_cm}x${product.largura_cm}x${product.altura_cm}cm`,
-                ingredients: 'Ingredientes naturais e orgânicos'
+                ingredients: 'Ingredientes naturais e orgânicos',
+                estoque: product.estoque
             };
         })
         .catch(err => {
