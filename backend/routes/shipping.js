@@ -173,7 +173,7 @@ async function calcularOpcoesFrete(carrinho, cep_destino) {
         const sfBody = {
             from: { postal_code: cepOrigem },
             to:   { postal_code: cepDestino },
-            services: '1,2,17', // PAC, SEDEX, Mini Envios
+            services: '1,2', // PAC, SEDEX
             options: {
                 own_hand:           false,
                 receipt:            false,
