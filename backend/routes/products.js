@@ -2,33 +2,31 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
-const fs = require('fs');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
 
 const router = express.Router();
 
 // ============================================================
-// Upload de imagens de produto
+// Upload de imagens de produto — Cloudflare R2
 // ============================================================
-// Em produção (Railway), UPLOAD_DIR deve apontar pra um volume persistente
-// montado no serviço — sem isso, qualquer redeploy apaga as imagens enviadas,
-// já que o filesystem do container não é persistente entre deploys.
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `${crypto.randomUUID()}${ext}`);
+// Imagens são guardadas no Cloudflare R2 (S3-compatible) e servidas
+// diretamente pela URL pública do bucket. Sem volume persistente,
+// sem risco de perder arquivo em redeploy.
+const r2 = new S3Client({
+    region: 'auto',
+    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
 });
 
+const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
         if (!TIPOS_PERMITIDOS.includes(file.mimetype)) {
@@ -38,16 +36,33 @@ const upload = multer({
     },
 });
 
-// Upload de imagem (Apenas Admin) — retorna a URL pra salvar em imagem_url
+// Upload de imagem (Apenas Admin) — envia pro R2 e retorna a URL pública
 router.post('/upload', authenticateToken, requireAdmin, (req, res) => {
-    upload.single('imagem')(req, res, (err) => {
+    upload.single('imagem')(req, res, async (err) => {
         if (err) {
             return res.status(400).json({ error: err.message || 'Erro ao enviar imagem.' });
         }
         if (!req.file) {
             return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
         }
-        res.json({ url: `/uploads/${req.file.filename}` });
+
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        const key = `${crypto.randomUUID()}${ext}`;
+
+        try {
+            await r2.send(new PutObjectCommand({
+                Bucket: process.env.R2_BUCKET_NAME,
+                Key: key,
+                Body: req.file.buffer,
+                ContentType: req.file.mimetype,
+            }));
+
+            const publicUrl = `${process.env.R2_PUBLIC_URL}/${key}`;
+            res.json({ url: publicUrl });
+        } catch (uploadErr) {
+            console.error('[R2] Erro ao enviar imagem:', uploadErr.message);
+            res.status(500).json({ error: 'Erro ao salvar imagem.' });
+        }
     });
 });
 

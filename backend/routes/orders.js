@@ -396,10 +396,10 @@ router.patch('/:id/envio', authenticateToken, requireAdmin, async (req, res) => 
     }
 });
 
-// ── Cancelar Pedido Próprio (Cliente) — só permitido antes do pagamento ──────
-// Sem pagamento aprovado ainda, cancelar é só devolver o estoque, sem reembolso
-// envolvido. Depois de pago, o cliente precisa falar com a loja (ver rota de
-// reembolso abaixo, que é de uso exclusivo da administradora).
+// ── Cancelar Pedido Próprio (Cliente) ────────────────────────────────────────
+// • pendente → cancela e devolve estoque (sem reembolso, nada foi pago).
+// • pago     → reembolsa via Mercado Pago, cancela e devolve estoque.
+// • enviado / cancelado → bloqueado (uma vez despachado, não tem volta).
 router.patch('/:id/cancelar', authenticateToken, async (req, res) => {
     const client = await db.connect();
     try {
@@ -419,13 +419,38 @@ router.patch('/:id/cancelar', authenticateToken, async (req, res) => {
 
         const pedido = pedidoRes.rows[0];
 
-        if (pedido.status !== 'pendente') {
+        if (pedido.status !== 'pendente' && pedido.status !== 'pago') {
             await client.query('ROLLBACK');
             return res.status(400).json({
-                error: pedido.status === 'pago'
-                    ? "Esse pedido já foi pago. Entre em contato com a loja para solicitar reembolso."
+                error: pedido.status === 'enviado'
+                    ? "Esse pedido já foi enviado e não pode mais ser cancelado."
                     : "Esse pedido não pode mais ser cancelado."
             });
+        }
+
+        // Se o pedido já foi pago, precisa reembolsar antes de cancelar.
+        // Faz o reembolso ANTES de alterar o banco — se a API do MP falhar,
+        // o pedido continua intacto e o dinheiro não some no limbo.
+        let reembolsado = false;
+        if (pedido.status === 'pago') {
+            if (!pedido.mp_payment_id) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error: "Esse pedido não tem um pagamento do Mercado Pago associado. Entre em contato com a loja."
+                });
+            }
+
+            try {
+                await refundPayment(pedido.mp_payment_id);
+                reembolsado = true;
+            } catch (mpError) {
+                await client.query('ROLLBACK');
+                console.error('[CANCELAR/REEMBOLSO] Erro na API do Mercado Pago:', mpError.message);
+                return res.status(502).json({
+                    error: "Não foi possível processar o reembolso. Tente novamente ou entre em contato com a loja.",
+                    detalhe: mpError.message,
+                });
+            }
         }
 
         await client.query("UPDATE pedidos SET status = 'cancelado' WHERE id = $1", [id]);
@@ -438,13 +463,28 @@ router.patch('/:id/cancelar', authenticateToken, async (req, res) => {
 
         await client.query('COMMIT');
 
-        enviarEmailCancelado({
-            nomeCliente: req.user.nome || pedido.cliente_nome || 'Cliente',
-            emailCliente: req.user.email,
-            pedidoId: id,
-        }).catch(err => console.error('[EMAIL] Erro assíncrono (cancelado):', err.message));
+        // Envia o e-mail apropriado (reembolso ou cancelamento simples)
+        if (reembolsado) {
+            enviarEmailReembolso({
+                nomeCliente: req.user.nome || pedido.cliente_nome || 'Cliente',
+                emailCliente: req.user.email,
+                pedidoId: id,
+                total: pedido.total,
+            }).catch(err => console.error('[EMAIL] Erro assíncrono (reembolso):', err.message));
+        } else {
+            enviarEmailCancelado({
+                nomeCliente: req.user.nome || pedido.cliente_nome || 'Cliente',
+                emailCliente: req.user.email,
+                pedidoId: id,
+            }).catch(err => console.error('[EMAIL] Erro assíncrono (cancelado):', err.message));
+        }
 
-        res.json({ message: "Pedido cancelado." });
+        res.json({
+            message: reembolsado
+                ? "Pedido cancelado e reembolso processado! O valor será devolvido em breve."
+                : "Pedido cancelado.",
+            reembolsado,
+        });
 
     } catch (error) {
         await client.query('ROLLBACK');

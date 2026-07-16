@@ -27,12 +27,8 @@ app.use('/api/frete', shippingRoutes);
 app.use('/api/webhook', webhookRoutes); // Público: recebe notificações do MercadoPago
 app.use('/api/tags', tagsRoutes);
 
-// Servir imagens de produto enviadas via upload (precisa do mesmo UPLOAD_DIR usado em routes/products.js)
-const path = require('path');
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(UPLOAD_DIR));
-
 // Servir o Frontend (HTML, CSS, JS)
+const path = require('path');
 app.use(express.static(path.join(__dirname, '../')));
 
 const PORT = process.env.PORT || 3000;
