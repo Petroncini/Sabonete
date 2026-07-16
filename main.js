@@ -594,7 +594,7 @@ function openModal(productId) {
                 ? `<button class="btn-primary" disabled style="background-color: #ccc; cursor: not-allowed; opacity: 0.8;">Esgotado</button>`
                 : `<button class="btn-primary" id="modal-cart-btn" data-id="${product.id}">🛒 Adicionar ao Carrinho</button>`}
           </div>
-          <a href="https://wa.me/5511999999999?text=Olá! Tenho interesse no ${encodeURIComponent(product.name)}" target="_blank" rel="noopener"
+          <a href="https://wa.me/554988122851?text=Olá! Tenho interesse no ${encodeURIComponent(product.name)}" target="_blank" rel="noopener"
              class="btn-outline mt-3" style="width:100%;justify-content:center">
             💬 Pedir pelo WhatsApp
           </a>
