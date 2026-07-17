@@ -233,7 +233,41 @@ async function enviarEmailReembolso({ nomeCliente, emailCliente, pedidoId, total
     });
 }
 
+/**
+ * E-mail de contato recebido pelo site (enviado PARA a loja).
+ */
+async function enviarEmailContatoSite({ nomeCliente, emailCliente, mensagem }) {
+    const html = renderLayout({
+        headerEmoji: '💬',
+        headerTitulo: 'Nova Mensagem pelo Site',
+        corpoHtml: `
+            <p style="color:#5c3d2e;font-size:16px;">Você recebeu um novo contato.</p>
+            <p><strong>Nome:</strong> ${nomeCliente}</p>
+            <p><strong>E-mail:</strong> ${emailCliente}</p>
+            <p><strong>Mensagem:</strong></p>
+            <div style="background:#f3ede7; border-radius:8px; padding:16px; color:#666; white-space:pre-wrap;">${mensagem}</div>
+        `,
+    });
+
+    const resend = getResend();
+    if (!resend) return { success: false, reason: 'sem_config' };
+    try {
+        const { data, error } = await resend.emails.send({
+            from: FROM_EMAIL,
+            to: ['contato@ateliecamilapetroncini.com.br'],
+            replyTo: emailCliente,
+            subject: `💬 Novo contato pelo site: ${nomeCliente}`,
+            html,
+        });
+        if (error) return { success: false, error };
+        return { success: true, id: data?.id };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+}
+
 module.exports = {
+    enviarEmailContatoSite,
     enviarEmailBoasVindas,
     enviarEmailPagamentoConfirmado,
     enviarEmailEnvio,

@@ -78,7 +78,9 @@ router.get('/', async (req, res) => {
             LEFT JOIN produto_tags pt ON pt.produto_id = p.id
             LEFT JOIN tags t ON t.id = pt.tag_id
             GROUP BY p.id
-            ORDER BY p.id ASC
+            ORDER BY 
+                CASE WHEN p.estoque > 0 THEN 0 ELSE 1 END,
+                p.id ASC
         `);
         res.json(result.rows);
     } catch (error) {
