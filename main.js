@@ -395,13 +395,14 @@ function fetchProducts(category) {
             const formattedProducts = data.map(p => {
                 const tagNomes = (p.tags || []).map(t => t.nome);
                 const isKit = tagNomes.includes('kits');
+                const isNew = (new Date() - new Date(p.criado_em)) < 30 * 24 * 60 * 60 * 1000;
                 return {
                     id: p.id,
                     name: p.nome,
                     tagIds: (p.tags || []).map(t => t.id),
                     price: parseFloat(p.preco),
-                    badge: isKit ? 'kit' : (p.id > 6 ? 'new' : ''),
-                    badgeLabel: isKit ? 'Kit' : (p.id > 6 ? 'Novo' : ''),
+                    badge: isKit ? 'kit' : (isNew ? 'new' : ''),
+                    badgeLabel: isKit ? 'Kit' : (isNew ? 'Novo' : ''),
                     tags: tagNomes.length > 0 ? tagNomes : ['artesanal'],
                     desc: p.descricao,
                     img: p.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
@@ -409,6 +410,12 @@ function fetchProducts(category) {
                     ingredients: 'Ingredientes naturais e orgânicos',
                     estoque: p.estoque
                 };
+            });
+
+            formattedProducts.sort((a, b) => {
+                const aEstoque = a.estoque > 0 ? 1 : 0;
+                const bEstoque = b.estoque > 0 ? 1 : 0;
+                return bEstoque - aEstoque;
             });
 
             allProducts = formattedProducts;
@@ -631,8 +638,8 @@ function fetchProductById(id) {
                 name: product.nome,
                 category: product.categoria || 'todos',
                 price: parseFloat(product.preco),
-                badge: product.categoria === 'kits' ? 'kit' : (product.id > 6 ? 'new' : ''),
-                badgeLabel: product.categoria === 'kits' ? 'Kit' : (product.id > 6 ? 'Novo' : ''),
+                badge: product.categoria === 'kits' ? 'kit' : ((new Date() - new Date(product.criado_em)) < 30 * 24 * 60 * 60 * 1000 ? 'new' : ''),
+                badgeLabel: product.categoria === 'kits' ? 'Kit' : ((new Date() - new Date(product.criado_em)) < 30 * 24 * 60 * 60 * 1000 ? 'Novo' : ''),
                 tags: [product.categoria || 'artesanal'],
                 desc: product.descricao,
                 img: product.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
