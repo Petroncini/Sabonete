@@ -698,14 +698,15 @@ function initContactForm() {
     });
 }
 
-// Simula um POST com Fetch API — substituir pela URL real do backend
+// Envia um POST com Fetch API para o backend real
 function submitContactForm(data) {
-    return new Promise((resolve) => {
-        // Simula latência de rede
-        setTimeout(() => {
-            console.log('[AJAX] Dados enviados:', data);
-            resolve({ success: true });
-        }, 1200);
+    return fetch('/api/contato', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(res => {
+        if (!res.ok) throw new Error('Erro na requisição');
+        return res.json();
     });
 }
 
