@@ -406,7 +406,7 @@ function fetchProducts(category) {
                     desc: p.descricao,
                     img: p.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
                     details: `Peso: ${p.peso_gramas}g`,
-                    ingredients: 'Ingredientes naturais e orgânicos',
+                    ingredients: p.ingredientes || null,
                     estoque: p.estoque
                 };
             });
@@ -586,7 +586,7 @@ function openModal(productId) {
           <h2 class="section-title text-left text-2xl mb-2" style="text-align:left">${product.name}</h2>
           <p class="mb-4" style="color:var(--secondary);font-size:.9rem">${product.desc}</p>
           <p style="color:var(--text);font-size:.88rem;line-height:1.7;margin-bottom:1.2rem">${product.details}</p>
-          <p style="font-size:.8rem;color:var(--secondary)"><strong>Ingredientes:</strong> ${product.ingredients}</p>
+          ${product.ingredients ? `<p style="font-size:.8rem;color:var(--secondary)"><strong>Ingredientes:</strong> ${product.ingredients}</p>` : ''}
           <div class="product-tags mt-4 mb-5">${product.tags.map(t => `<span class="product-tag">${t}</span>`).join('')}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
             <span class="product-price" style="font-size:1.6rem">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
@@ -637,7 +637,7 @@ function fetchProductById(id) {
                 desc: product.descricao,
                 img: product.imagem_url || 'https://placehold.co/400x400/FAF5EF/8B9E84?text=Sem+Imagem',
                 details: `Peso: ${product.peso_gramas}g. Dimensões: ${product.comprimento_cm}x${product.largura_cm}x${product.altura_cm}cm`,
-                ingredients: 'Ingredientes naturais e orgânicos',
+                ingredients: product.ingredientes || null,
                 estoque: product.estoque
             };
         })

@@ -103,15 +103,15 @@ async function sincronizarTags(client, produtoId, tagIds) {
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     const client = await db.connect();
     try {
-        const { nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, tag_ids } = req.body;
+        const { nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, ingredientes, tag_ids } = req.body;
 
         await client.query('BEGIN');
 
         const newProduct = await client.query(
             `INSERT INTO produtos
-            (nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-            [nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque || 0, imagem_url]
+            (nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, ingredientes)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+            [nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque || 0, imagem_url, ingredientes || null]
         );
 
         await sincronizarTags(client, newProduct.rows[0].id, tag_ids);
@@ -132,7 +132,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     const client = await db.connect();
     try {
         const { id } = req.params;
-        const { nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, tag_ids } = req.body;
+        const { nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, ingredientes, tag_ids } = req.body;
 
         await client.query('BEGIN');
 
@@ -146,9 +146,10 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
             largura_cm = COALESCE($6, largura_cm),
             altura_cm = COALESCE($7, altura_cm),
             estoque = COALESCE($8, estoque),
-            imagem_url = COALESCE($9, imagem_url)
-            WHERE id = $10 RETURNING *`,
-            [nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, id]
+            imagem_url = COALESCE($9, imagem_url),
+            ingredientes = $10
+            WHERE id = $11 RETURNING *`,
+            [nome, descricao, preco, peso_gramas, comprimento_cm, largura_cm, altura_cm, estoque, imagem_url, ingredientes || null, id]
         );
 
         if (updatedProduct.rows.length === 0) {
