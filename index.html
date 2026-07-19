@@ -112,13 +112,14 @@
      HERO
      ============================================================ -->
   <section id="hero" aria-label="Apresentação">
-    <img class="hero-bg" src="imagens/hero_bg.jpeg" alt="Sabonetes artesanais sobre superfície de madeira natural" />
-    <div class="hero-overlay"></div>
+    <!-- Carousel slides (imagem de fundo + overlay) — renderizado por JS -->
+    <div id="hero-slides-track"></div>
 
+    <!-- Conteúdo fixo sobre o carrossel -->
     <div class="hero-content">
       <span class="hero-eyebrow">Ateliê Camila Petroncini</span>
-      <h1 class="hero-title">Sabonetes e Essências artesanais</h1>
-      <p class="hero-subtitle">
+      <h1 id="hero-title" class="hero-title">Sabonetes e Essências artesanais</h1>
+      <p id="hero-subtitle" class="hero-subtitle">
         Feitos à mão com ingredientes naturais cuidadosamente selecionados.<br />
         Para o seu cuidado, aconchego e bem-estar.
       </p>
@@ -127,6 +128,15 @@
         <a href="#sobre" class="btn-outline" style="color:#fff;border-color:rgba(255,255,255,.7)">Nossa História</a>
       </div>
     </div>
+
+    <!-- Controles do carrossel -->
+    <button id="hero-prev" class="hero-carousel-btn hero-carousel-btn--prev"
+      aria-label="Slide anterior">&#8249;</button>
+    <button id="hero-next" class="hero-carousel-btn hero-carousel-btn--next" aria-label="Próximo slide">&#8250;</button>
+    <div id="hero-dots" class="hero-carousel-dots"></div>
+
+    <!-- Botão de edição (visível só para admin) -->
+    <button id="hero-edit-btn" class="hero-edit-btn hidden" aria-label="Editar carrossel"> Editar </button>
 
     <div class="scroll-indicator" aria-hidden="true">
       <span>Explore</span>
@@ -142,8 +152,10 @@
 
         <!-- Imagem -->
         <!-- <div class="sobre-image-wrapper reveal"> -->
-        <div class="sobre-image-wrapper">
-          <img src="imagens/sobre_artesa.png" alt="Camila Petroncini preparando sabonetes artesanais" />
+        <div class="sobre-image-wrapper sobre-editable-wrap">
+          <img id="sobre-img" src="imagens/sobre_artesa.png" alt="Camila Petroncini preparando sabonetes artesanais" />
+          <button id="sobre-edit-btn" class="section-img-edit-btn hidden" aria-label="Trocar imagem do Sobre"> Trocar
+            imagem</button>
         </div>
 
         <!-- Texto -->
@@ -335,15 +347,19 @@
           </div>
 
           <!-- Mapa / localização -->
-          <div style="border-radius:14px;overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow)">
-            <img src="imagens/hero_bg.png" alt="Entrega para todo o Brasil"
-              style="width:100%;height:200px;object-fit:cover" />
-            <div style="padding:1.2rem 1.4rem;background:var(--bg)">
-              <p style="font-size:.85rem;color:var(--text)">
-                <strong style="color:var(--heading)">Entrega para todo o Brasil</strong> pelos Correios.<br />
-                Retire também pessoalmente em <strong style="color:var(--heading)">Joaçaba — SC</strong>.
-              </p>
+          <div class="contato-img-wrap">
+            <div style="border-radius:14px;overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow)">
+              <img id="contato-img" src="imagens/hero_bg.png" alt="Entrega para todo o Brasil"
+                style="width:100%;height:200px;object-fit:cover" />
+              <div style="padding:1.2rem 1.4rem;background:var(--bg)">
+                <p style="font-size:.85rem;color:var(--text)">
+                  <strong style="color:var(--heading)">Entrega para todo o Brasil</strong> pelos Correios.<br />
+                  Retire também pessoalmente em <strong style="color:var(--heading)">Joaçaba — SC</strong>.
+                </p>
+              </div>
             </div>
+            <button id="contato-edit-btn" class="section-img-edit-btn section-img-edit-btn--contato hidden"
+              aria-label="Trocar imagem do Contato"> Trocar imagem</button>
           </div>
         </div>
 
@@ -406,6 +422,25 @@
       </p>
     </div>
   </footer>
+
+
+  <!-- Hero Edit Modal (admin only) -->
+  <div id="hero-edit-overlay">
+    <div id="hero-edit-modal">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+        <h2 class="font-head text-2xl font-bold" style="color:var(--heading)">Editar Carrossel do Hero</h2>
+        <button onclick="fecharHeroEdit()"
+          style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text)">✕</button>
+      </div>
+      <div id="hero-slides-editor-list"></div>
+      <button onclick="addHeroSlide()" class="btn-outline"
+        style="width:100%;justify-content:center;margin-bottom:1.5rem">+ Adicionar Slide</button>
+      <div style="display:flex;gap:1rem;justify-content:flex-end">
+        <button onclick="fecharHeroEdit()" class="btn-outline">Cancelar</button>
+        <button onclick="salvarHeroSlides()" class="btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Script principal -->
   <script src="main.js?v=1.1"></script>

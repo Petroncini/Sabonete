@@ -14,6 +14,7 @@ const shippingRoutes = require('./routes/shipping').router;
 const webhookRoutes = require('./routes/webhook');
 const tagsRoutes = require('./routes/tags');
 const contactRoutes = require('./routes/contact');
+const contentRoutes = require('./routes/content');
 
 // Endpoint de teste de saúde (Ping)
 app.get('/api/ping', (req, res) => {
@@ -28,6 +29,7 @@ app.use('/api/frete', shippingRoutes);
 app.use('/api/webhook', webhookRoutes); // Público: recebe notificações do MercadoPago
 app.use('/api/tags', tagsRoutes);
 app.use('/api/contato', contactRoutes);
+app.use('/api/content', contentRoutes);
 
 // Servir o Frontend (HTML, CSS, JS)
 const path = require('path');
