@@ -16,7 +16,7 @@
     window.fetch = async function (...args) {
         const response = await originalFetch.apply(this, args);
         if (response.status === 401 && localStorage.getItem('token')) {
-            const isLoginPage = window.location.pathname.endsWith('login.html');
+            const isLoginPage = window.location.pathname.endsWith('/login');
             let isSessaoInvalida = false;
             try {
                 const clone = response.clone();
@@ -28,7 +28,7 @@
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 alert('Sua sessão expirou. Faça login novamente.');
-                window.location.href = 'login.html';
+                window.location.href = '/login';
             }
         }
         return response;
@@ -194,8 +194,8 @@ function initAuthUI() {
     try { user = JSON.parse(userStr); } catch(e) {}
 
     // Encontra os links de login e admin
-    const loginLinks = document.querySelectorAll('a[href="login.html"]');
-    const adminLinks = document.querySelectorAll('a[href="backoffice.html"]:not(#admin-link-dropdown)');
+    const loginLinks = document.querySelectorAll('a[href="/login"]');
+    const adminLinks = document.querySelectorAll('a[href="/backoffice"]:not(#admin-link-dropdown)');
 
     const navContainer = document.querySelector('.flex.items-center.gap-4');
 
@@ -210,8 +210,8 @@ function initAuthUI() {
                 </button>
                 <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
                   <span id="user-name-display" class="block px-4 py-2 text-sm text-gray-700 border-b">Olá, ${user.nome || user.name || 'Usuário'}</span>
-                  <a href="meus-pedidos.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Meus Pedidos</a>
-                  ${user.role === 'admin' ? '<a href="backoffice.html" id="admin-link-dropdown" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Admin Panel</a>' : ''}
+                  <a href="/meus-pedidos" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Meus Pedidos</a>
+                  ${user.role === 'admin' ? '<a href="/backoffice" id="admin-link-dropdown" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Admin Panel</a>' : ''}
                   <a href="#" id="logout-btn" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Sair</a>
                 </div>
               </div>
@@ -251,7 +251,7 @@ function initAuthUI() {
                 e.preventDefault();
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
-                window.location.href = 'index.html';
+                window.location.href = '/home';
             });
         }
     } else {
@@ -277,6 +277,12 @@ function initNavbar() {
     const mobileMenu = document.getElementById('mobile-menu');
 
     function updateNavbar() {
+        const hasHero = !!document.getElementById('hero');
+        if (!hasHero) {
+            navbar.classList.add('scrolled');
+            navbar.classList.remove('hero-mode');
+            return;
+        }
         if (window.scrollY > 60) {
             navbar.classList.add('scrolled');
             navbar.classList.remove('hero-mode');
@@ -395,7 +401,7 @@ function fetchProducts(category) {
             const formattedProducts = data.map(p => {
                 const tagNomes = (p.tags || []).map(t => t.nome);
                 const isKit = tagNomes.includes('kits');
-                const isNew = (new Date() - new Date(p.criado_em)) < 30 * 24 * 60 * 60 * 1000;
+                const isNew = (new Date() - new Date(p.criado_em)) < 7 * 24 * 60 * 60 * 1000;
                 return {
                     id: p.id,
                     name: p.nome,
@@ -451,7 +457,7 @@ function createProductCard(p) {
         <p class="product-card-desc">${p.desc}</p>
         <div class="product-tags">${tagsHtml}</div>
         <div class="product-card-footer">
-          <span class="product-price">R$ ${p.price.toFixed(2).replace('.', ',')}</span>
+          <span class="product-price"><span class="price-currency">R$</span>${p.price.toFixed(2).replace('.', ',')}</span>
           ${btnHtml}
         </div>
       </div>
@@ -511,12 +517,22 @@ function addToCart(productId, btnEl) {
     localStorage.setItem(getCartKey(), JSON.stringify(state.cart));
 
     // Feedback visual no botão
-    btnEl.textContent = '✓ Adicionado';
+    const isModalBtn = btnEl.classList.contains('btn-primary');
+    const originalText = btnEl.textContent;
+    btnEl.textContent = 'Adicionado';
     btnEl.classList.add('added');
+    if (isModalBtn) {
+        btnEl.style.background = 'var(--accent)';
+        btnEl.style.borderColor = 'var(--accent)';
+    }
     setTimeout(() => {
-        btnEl.innerHTML = '🛒 Adicionar';
+        btnEl.textContent = originalText;
         btnEl.classList.remove('added');
-    }, 1500);
+        if (isModalBtn) {
+            btnEl.style.background = '';
+            btnEl.style.borderColor = '';
+        }
+    }, 2000);
 
     updateCartBadge();
 }
@@ -595,11 +611,11 @@ function openModal(productId) {
           <p style="color:var(--text);font-size:.88rem;line-height:1.7;margin-bottom:1.2rem">${product.details}</p>
           ${product.ingredients ? `<p style="font-size:.8rem;color:var(--secondary)"><strong>Ingredientes:</strong> ${product.ingredients}</p>` : ''}
           <div class="product-tags mt-4 mb-5">${product.tags.map(t => `<span class="product-tag">${t}</span>`).join('')}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
-            <span class="product-price" style="font-size:1.6rem">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:nowrap;">
+            <span class="product-price" style="font-size:1.6rem;white-space:nowrap"><span class="price-currency" style="font-size:1rem">R$</span>${product.price.toFixed(2).replace('.', ',')}</span>
             ${product.estoque <= 0 
-                ? `<button class="btn-primary" disabled style="background-color: #ccc; cursor: not-allowed; opacity: 0.8;">Esgotado</button>`
-                : `<button class="btn-primary" id="modal-cart-btn" data-id="${product.id}">🛒 Adicionar ao Carrinho</button>`}
+                ? `<button class="btn-primary" disabled style="background-color: #ccc; cursor: not-allowed; opacity: 0.8;font-size:.75rem;padding:.6rem 1.2rem">Esgotado</button>`
+                : `<button class="btn-primary" id="modal-cart-btn" data-id="${product.id}" style="font-size:.75rem;padding:.6rem 1.2rem;white-space:nowrap">Adicionar ao Carrinho</button>`}
           </div>
           <a href="https://wa.me/554988122851?text=Olá! Tenho interesse no ${encodeURIComponent(product.name)}" target="_blank" rel="noopener"
              class="btn-outline mt-3" style="width:100%;justify-content:center">

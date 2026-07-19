@@ -33,6 +33,16 @@ app.use('/api/contato', contactRoutes);
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../')));
 
+// Rotas limpas (sem .html na URL)
+const root = path.join(__dirname, '../');
+app.get('/',              (req, res) => res.redirect('/home'));
+app.get('/home',          (req, res) => res.sendFile('index.html',        { root }));
+app.get('/carrinho',      (req, res) => res.sendFile('carrinho.html',     { root }));
+app.get('/checkout',      (req, res) => res.sendFile('checkout.html',     { root }));
+app.get('/login',         (req, res) => res.sendFile('login.html',        { root }));
+app.get('/backoffice',    (req, res) => res.sendFile('backoffice.html',   { root }));
+app.get('/meus-pedidos',  (req, res) => res.sendFile('meus-pedidos.html', { root }));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Servidor rodando na porta ${PORT}`);

@@ -38,9 +38,9 @@
 
 <body>
   <header>
-    <nav id="navbar" class="hero-mode" role="navigation" aria-label="Menu principal">
+    <nav id="navbar" class="scrolled" role="navigation" aria-label="Menu principal">
       <div class="max-w-6xl mx-auto flex items-center justify-between">
-        <a href="index.html" class="nav-logo" aria-label="Início">
+        <a href="/home" class="nav-logo" aria-label="Início">
           <img src="imagens/marca.png" alt="Ateliê Camila Petroncini" />
         </a>
         <div class="flex items-center gap-4">
@@ -52,12 +52,12 @@
         </div>
       </div>
       <div id="mobile-menu" role="menu" aria-label="Menu mobile">
-        <a href="index.html" class="nav-link" role="menuitem">Início</a>
+        <a href="/home" class="nav-link" role="menuitem">Início</a>
       </div>
     </nav>
   </header>
 
-  <main style="padding-top: 120px; padding-bottom: 80px; min-height: 80vh;">
+  <main style="padding-top: 150px; padding-bottom: 80px; min-height: 80vh;">
     <div class="max-w-3xl mx-auto px-4">
       <div class="reveal">
         <h1 class="section-title text-center">Finalizar Pedido</h1>
@@ -111,6 +111,10 @@
           
         </form>
 
+        <div class="text-center mt-4">
+          <a href="/carrinho" class="btn-outline" style="font-size:.82rem;padding:.6rem 1.8rem">← Voltar ao Carrinho</a>
+        </div>
+
         <!-- Área do PIX (Oculta por padrão) -->
         <div id="pix-area" class="hidden text-center mt-8 p-6 bg-[var(--cream)] rounded-lg border border-[var(--primary)]">
           <h2 class="font-head text-2xl mb-2" style="color:var(--heading);">🎉 Pedido Criado com Sucesso!</h2>
@@ -128,9 +132,9 @@
     </div>
   </main>
 
-  <footer>
-    <div class="max-w-6xl mx-auto text-center" style="padding-bottom: 20px;">
-      <p class="footer-copy">© 2026 Ateliê Camila Petroncini. Todos os direitos reservados.</p>
+  <footer style="background: var(--bg); border-top: 1px solid var(--border); padding: 1.5rem 2rem; margin-top: auto;">
+    <div class="max-w-6xl mx-auto text-center">
+      <p class="footer-copy" style="color: var(--text); opacity: .5;">© 2026 Ateliê Camila Petroncini. Todos os direitos reservados.</p>
     </div>
   </footer>
   <script src="main.js"></script>
@@ -139,7 +143,7 @@
     const token = localStorage.getItem('token');
     if (!token) {
         alert("Você precisa fazer login para finalizar a compra.");
-        window.location.href = 'login.html';
+        window.location.href = '/login';
     }
 
     let freteEscolhido = null; // { nome, preco, prazo }

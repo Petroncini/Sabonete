@@ -27,7 +27,8 @@
 }
 
 html {
-    scroll-behavior: smooth
+    scroll-behavior: smooth;
+    overscroll-behavior: none
 }
 
 body {
@@ -35,7 +36,8 @@ body {
     background: var(--bg);
     color: var(--text);
     line-height: 1.7;
-    overflow-x: hidden
+    overflow-x: hidden;
+    overscroll-behavior: none
 }
 
 ::-webkit-scrollbar {
@@ -119,6 +121,11 @@ h4 {
     background: rgba(255, 250, 246, .96);
 }
 
+#navbar.hero-mode {
+    background: transparent;
+    box-shadow: none
+}
+
 #navbar.scrolled {
     backdrop-filter: blur(12px);
     box-shadow: 0 2px 20px rgba(168, 134, 107, .15);
@@ -126,12 +133,12 @@ h4 {
 }
 
 .nav-logo img {
-    height: 56px;
+    height: 96px;
     transition: var(--transition)
 }
 
 #navbar.scrolled .nav-logo img {
-    height: 46px
+    height: 76px
 }
 
 .nav-link {
@@ -165,11 +172,19 @@ h4 {
 }
 
 #navbar.hero-mode .nav-link {
-    color: var(--heading);
+    color: rgba(255, 255, 255, .92)
 }
 
 #navbar.hero-mode .nav-link:hover {
-    color: black
+    color: #fff
+}
+
+#navbar.hero-mode .nav-link::after {
+    background: rgba(255, 255, 255, .7)
+}
+
+#navbar.hero-mode .nav-logo img {
+    filter: brightness(0) invert(1) opacity(.95)
 }
 
 #cart-badge {
@@ -561,12 +576,20 @@ h4 {
     font-family: var(--font-head);
     font-size: 1.3rem;
     color: var(--primary);
-    font-weight: 700
+    font-weight: 700;
+    white-space: nowrap
+}
+
+.price-currency {
+    font-size: .78rem;
+    vertical-align: middle;
+    margin-right: .1em
 }
 
 .btn-cart {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: .4rem;
     background: var(--primary);
     color: #fff;
@@ -578,17 +601,17 @@ h4 {
     border-radius: 50px;
     border: none;
     cursor: pointer;
-    transition: var(--transition)
+    transition: background .3s ease, color .3s ease;
+    white-space: nowrap;
+    min-width: 100px
 }
 
 .btn-cart:hover {
-    background: var(--primary-dark);
-    transform: scale(1.04)
+    background: var(--primary-dark)
 }
 
 .btn-cart.added {
-    background: var(--accent);
-    animation: addedPulse .5s ease
+    background: var(--accent)
 }
 
 /* --- MODAL --- */
@@ -926,7 +949,7 @@ footer {
 }
 
 .footer-logo img {
-    height: 48px;
+    height: 96px;
     filter: brightness(0) invert(1) opacity(.9);
     margin-bottom: .75rem
 }
@@ -1066,17 +1089,9 @@ footer {
 }
 
 @keyframes addedPulse {
-    0% {
-        transform: scale(1)
-    }
-
-    50% {
-        transform: scale(1.15)
-    }
-
-    100% {
-        transform: scale(1)
-    }
+    0% { opacity: 1 }
+    50% { opacity: 0.8 }
+    100% { opacity: 1 }
 }
 
 @keyframes pulse-green {

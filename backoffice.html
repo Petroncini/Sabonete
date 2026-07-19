@@ -73,6 +73,9 @@
     .btn-danger:hover {
       background-color: #dc2626;
     }
+
+    /* Garante que os modais ficam acima da navbar fixa (z-index: 1000) */
+    [id$="-overlay"] { z-index: 1100 !important; }
   </style>
 </head>
 
@@ -80,11 +83,11 @@
   <header style="background:var(--bg)">
     <nav id="navbar" class="scrolled" role="navigation" aria-label="Menu principal">
       <div class="max-w-6xl mx-auto flex items-center justify-between">
-        <a href="index.html" class="nav-logo" aria-label="Início">
+        <a href="/home" class="nav-logo" aria-label="Início">
           <span class="font-head text-xl font-bold" style="color:var(--heading)">Admin Panel</span>
         </a>
         <ul class="hidden md:flex items-center gap-8 list-none m-0 p-0">
-          <li><a href="index.html" class="nav-link">← Voltar ao Site</a></li>
+          <li><a href="/home" class="nav-link">← Voltar ao Site</a></li>
         </ul>
         <div class="flex items-center gap-4">
           <button id="hamburger" class="md:hidden p-1" aria-label="Abrir menu" aria-expanded="false"
@@ -97,12 +100,12 @@
         </div>
       </div>
       <div id="mobile-menu" role="menu" aria-label="Menu mobile">
-        <a href="index.html" class="nav-link" role="menuitem">Voltar ao Site</a>
+        <a href="/home" class="nav-link" role="menuitem">Voltar ao Site</a>
       </div>
     </nav>
   </header>
 
-  <main style="padding-top: 120px; padding-bottom: 80px; min-height: 85vh;">
+  <main style="padding-top: 96px; padding-bottom: 80px; min-height: 85vh;">
     <div class="max-w-6xl mx-auto px-4">
       <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 reveal">
         <div>
@@ -439,7 +442,7 @@
               localStorage.removeItem('token');
               localStorage.removeItem('user');
               alert('Sua sessão expirou. Faça login novamente.');
-              window.location.href = 'login.html';
+              window.location.href = '/login';
             }
           }
           return response;
@@ -451,7 +454,7 @@
 
     if (!token || user.role !== 'admin') {
       alert("Acesso Negado. Faça login como administrador.");
-      window.location.href = 'login.html';
+      window.location.href = '/login';
     }
 
     let currentProdutos = [];
