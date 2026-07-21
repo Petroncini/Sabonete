@@ -461,8 +461,18 @@
     let currentTags = [];
 
     async function loadTags() {
-      const res = await fetch('/api/tags');
-      currentTags = await res.json();
+      try {
+        const res = await fetch('/api/tags');
+        if (res.ok) {
+          const data = await res.json();
+          currentTags = Array.isArray(data) ? data : [];
+        } else {
+          currentTags = [];
+        }
+      } catch (e) {
+        console.error("Erro ao carregar tags:", e);
+        currentTags = [];
+      }
     }
 
     async function loadAdminData() {
@@ -471,7 +481,8 @@
 
         // Fetch Produtos
         const resProdutos = await fetch('/api/produtos');
-        const produtos = await resProdutos.json();
+        const produtosRaw = await resProdutos.json();
+        const produtos = Array.isArray(produtosRaw) ? produtosRaw : [];
         const tbodyProdutos = document.getElementById('produtos-tbody');
 
         currentProdutos = produtos;
@@ -508,7 +519,8 @@
         const resPedidos = await fetch('/api/pedidos', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const pedidos = await resPedidos.json();
+        const pedidosRaw = await resPedidos.json();
+        const pedidos = Array.isArray(pedidosRaw) ? pedidosRaw : [];
         const tbodyPedidos = document.getElementById('pedidos-tbody');
 
         tbodyPedidos.innerHTML = pedidos.map(ped => {
